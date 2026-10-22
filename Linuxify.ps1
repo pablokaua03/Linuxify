@@ -99,7 +99,7 @@ public class HotkeyWindow : NativeWindow, IDisposable {
 '@
 
 . (Join-Path $Data 'LinuxifyAlpha.ps1')
-$__lf = Join-Path $Data 'LinuxifyLang.ps1'; if (-not (Test-Path $__lf)) { $__lf = Join-Path $PSScriptRoot 'LinuxifyLang.ps1' }; if (Test-Path $__lf) { . $__lf } else { function T([string]$k) { $k } }
+$__lf = Join-Path $Data 'LinuxifyLang.ps1'; if (-not (Test-Path $__lf)) { if ($PSScriptRoot) { $__lf = Join-Path $PSScriptRoot 'LinuxifyLang.ps1' } }; if (Test-Path $__lf) { . $__lf } else { function T([string]$k) { $k } }
 function New-StateIcon([bool]$On) {
     $bmp = New-Object System.Drawing.Bitmap 16, 16
     $g = [System.Drawing.Graphics]::FromImage($bmp); $g.SmoothingMode = 'AntiAlias'
@@ -107,7 +107,7 @@ function New-StateIcon([bool]$On) {
     $g.Dispose(); $bmp.Dispose()
     $sz = [System.Windows.Forms.SystemInformation]::SmallIconSize.Width; if ($sz -lt 16) { $sz = 16 }
     $pn = if ($sz -le 16) { 'logo-16.png' } elseif ($sz -le 24) { 'logo-24.png' } else { 'logo-32.png' }
-    $png = @((Join-Path $Data "assets\$pn"), (Join-Path $PSScriptRoot "assets\$pn")) | Where-Object { Test-Path $_ } | Select-Object -First 1
+    $png = @((Join-Path $Data "assets\$pn"), (Join-Path $(if ($PSScriptRoot) { $PSScriptRoot } else { $Data }) "assets\$pn")) | Where-Object { Test-Path $_ } | Select-Object -First 1
     if ($png) {
         $src = [System.Drawing.Image]::FromFile($png); $bmp = New-Object System.Drawing.Bitmap $sz, $sz; $g = [System.Drawing.Graphics]::FromImage($bmp)
         $g.InterpolationMode = 'HighQualityBicubic'; $ia = New-Object System.Drawing.Imaging.ImageAttributes
