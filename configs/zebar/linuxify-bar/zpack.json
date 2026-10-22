@@ -1,0 +1,53 @@
+{
+  "$schema": "https://github.com/glzr-io/zebar/raw/v3.0.0/resources/zpack-schema.json",
+  "name": "linuxify-bar",
+  "version": "1.0.0",
+  "description": "Catppuccin Mocha top bar integrated with GlazeWM",
+  "tags": [
+    "glazewm",
+    "catppuccin"
+  ],
+  "previewImages": [],
+  "widgets": [
+    {
+      "name": "bar",
+      "htmlPath": "./index.html",
+      "zOrder": "normal",
+      "shownInTaskbar": false,
+      "focused": false,
+      "resizable": false,
+      "transparent": true,
+      "caching": {
+        "defaultDuration": 86400,
+        "rules": []
+      },
+      "privileges": {
+        "shellCommands": []
+      },
+      "presets": [
+        {
+          "name": "default",
+          "anchor": "top_left",
+          "offsetX": "0px",
+          "offsetY": "0px",
+          "width": "100%",
+          "height": "38px",
+          "monitorSelection": {
+            "type": "all"
+          },
+          "dockToEdge": {
+            "enabled": true,
+            "edge": "top",
+            "windowMargin": "0px"
+          }
+        }
+      ],
+      "includeFiles": [
+        "*.html",
+        "*.css",
+        "*.js"
+      ]
+    }
+  ],
+  "repositoryUrl": ""
+}

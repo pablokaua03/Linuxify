@@ -1,0 +1,9 @@
+{
+  "theme": "",
+  "controlStyles": [
+    { "target": "Taskbar.TaskbarFrame > Grid#RootGrid", "styles": ["Margin=0,0,0,0"] },
+    { "target": "Taskbar.TaskListButton", "styles": ["CornerRadius=8"] },
+    { "target": "Taskbar.TaskListLabeledButtonPanel@RunningIndicatorStates > Rectangle#RunningIndicator", "styles": ["Fill=#cba6f7", "Height=3", "Width=12", "RadiusX=1.5", "RadiusY=1.5"] },
+    { "target": "Taskbar.TaskListLabeledButtonPanel@RunningIndicatorStates > Rectangle#RunningIndicator", "styles": ["Fill@ActivePressed=#cba6f7", "Width@ActiveRunningIndicator=20"] }
+  ]
+}

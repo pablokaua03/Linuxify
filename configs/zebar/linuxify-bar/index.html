@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="bar">
+  <div class="left" id="workspaces"></div>
+  <div class="center" id="clock"></div>
+  <div class="right">
+    <span class="pill" id="net"></span>
+    <span class="pill" id="cpu"></span>
+    <span class="pill" id="mem"></span>
+    <span class="pill" id="vol"></span>
+    <span class="pill" id="bat"></span>
+  </div>
+</div>
+<script type="module">
+import * as zebar from './zebar.js';
+const p = zebar.createProviderGroup({
+  glazewm: { type: 'glazewm' },
+  cpu: { type: 'cpu', refreshInterval: 3000 },
+  memory: { type: 'memory', refreshInterval: 3000 },
+  network: { type: 'network', refreshInterval: 5000 },
+  battery: { type: 'battery', refreshInterval: 10000 },
+  audio: { type: 'audio' },
+  date: { type: 'date', formatting: 'EEE dd MMM  HH:mm', locale: 'pt-BR' },
+});
+const $ = (id) => document.getElementById(id);
+function render(o) {
+  const g = o.glazewm;
+  const ws = $('workspaces'); ws.innerHTML = '';
+  if (g) for (const w of g.currentWorkspaces) {
+    const b = document.createElement('button');
+    b.textContent = w.displayName ?? w.name;
+    b.className = 'ws' + (w.hasFocus ? ' focused' : w.isDisplayed ? ' shown' : '');
+    b.onclick = () => g.runCommand(`focus --workspace ${w.name}`);
+    ws.appendChild(b);
+  }
+  $('clock').textContent = o.date?.formatted ?? '';
+  $('cpu').textContent = o.cpu ? `\uf4bc ${Math.round(o.cpu.usage)}%` : '';
+  $('mem').textContent = o.memory ? `\uefc5 ${Math.round(o.memory.usage)}%` : '';
+  const n = o.network?.defaultInterface;
+  $('net').textContent = !n ? '\udb82\udcfd off' : n.type === 'wifi' ? `\uf1eb ${o.network.defaultGateway?.ssid ?? ''}` : '\udb80\ude00 eth';
+  const a = o.audio?.defaultPlaybackDevice;
+  $('vol').textContent = a ? `\uf028 ${a.volume}%` : '';
+  $('vol').onwheel = (e) => a && o.audio.setVolume(Math.max(0, Math.min(100, a.volume + (e.deltaY < 0 ? 5 : -5))));
+  const bt = o.battery;
+  $('bat').style.display = bt ? '' : 'none';
+  if (bt) $('bat').textContent = `${bt.isCharging ? '\uf0e7' : '\uf240'} ${Math.round(bt.chargePercent)}%`;
+}
+render(p.outputMap);
+p.onOutput(() => render(p.outputMap));
+</script>
+</body>
+</html>

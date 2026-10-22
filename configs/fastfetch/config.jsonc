@@ -1,0 +1,34 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "type": "file",
+    "source": "~/.config/fastfetch/anime-girl.txt",
+    "color": { "1": "38;2;166;173;200" },
+    "padding": { "top": 1, "left": 2, "right": 3 }
+  },
+  "display": {
+    "separator": " → ",
+    "color": { "separator": "white", "output": "white" }
+  },
+  "modules": [
+    { "type": "custom", "format": "\u001b[38;2;147;153;178m╭──────────────────────────────────────────────╮" },
+    { "type": "title", "key": "│ ", "keyColor": "38;2;147;153;178", "format": "{user-name-colored}@{host-name-colored}" },
+    { "type": "custom", "format": "\u001b[38;2;147;153;178m├──────────────────────────────────────────────┤" },
+    { "type": "os",       "key": "│  OS        ",      "keyColor": "blue" },
+    { "type": "host",     "key": "│ 󰌢 Machine  ", "keyColor": "magenta" },
+    { "type": "kernel",   "key": "│  Kernel    ",  "keyColor": "cyan" },
+    { "type": "uptime",   "key": "│ 󰅐 Uptime   ",  "keyColor": "green" },
+    { "type": "packages", "key": "│ 󰏖 Pkgs     ","keyColor": "yellow" },
+    { "type": "wm",       "key": "│  WM        ",      "keyColor": "red" },
+    { "type": "shell",    "key": "│  Shell     ",   "keyColor": "blue" },
+    { "type": "terminal", "key": "│  Term      ","keyColor": "magenta" },
+    { "type": "terminalfont", "key": "│  Font      ",  "keyColor": "cyan" },
+    { "type": "cpu",      "key": "│  CPU       ",     "keyColor": "green" },
+    { "type": "gpu",      "key": "│ 󰍛 GPU      ",     "keyColor": "yellow" },
+    { "type": "memory",   "key": "│  Memory    ",  "keyColor": "red", "format": "{used} / {total} ({percentage})" },
+    { "type": "wifi",     "key": "│  Wifi      ",    "keyColor": "blue", "format": "{ssid}" },
+    { "type": "localip",  "key": "│ 󰩟 IP       ","keyColor": "magenta", "compact": true },
+    { "type": "custom", "format": "\u001b[38;2;147;153;178m╰──────────────────────────────────────────────╯" },
+    { "type": "colors", "symbol": "circle", "paddingLeft": 2 }
+  ]
+}

@@ -1,0 +1,12 @@
+dist/
+build/
+*.bak
+*.bak-*
+backup/
+backups.txt
+state.txt
+transparency.json
+wt.settings.*.json
+fastfetch.config.original.jsonc
+*.log
+Linuxify.exe

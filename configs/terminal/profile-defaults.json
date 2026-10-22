@@ -1,0 +1,9 @@
+{
+  "colorScheme": "Catppuccin Mocha",
+  "font": { "face": "JetBrainsMono Nerd Font", "size": 11 },
+  "opacity": 70,
+  "useAcrylic": true,
+  "padding": "12",
+  "cursorShape": "bar",
+  "scrollbarState": "hidden"
+}
