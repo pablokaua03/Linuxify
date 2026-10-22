@@ -16,7 +16,7 @@ Linuxify is a small tray app plus a settings panel that glues together
 - **Tray icon**: left-click toggles *Linux mode* (GlazeWM + Zebar + terminal theme). **Ctrl+Alt+L** does the same.
 - **Panel** (tray > *Abrir painel...*):
   - **Geral**: per-tool toggles for GlazeWM, Zebar, Windhawk and the terminal theme, plus winget install/uninstall buttons and "start with Windows".
-  - **Terminal**: paste any ASCII banner, pick color scheme, ASCII color, font, opacity and acrylic; live preview; restore the original settings.
+  - **Terminal**: paste any ASCII banner (saved to `~/.config/fastfetch/logo.txt`, used by fastfetch and the desktop widget; *Restaurar original* copies `logo-default.txt` back), pick color scheme, ASCII color, font, opacity and acrylic; live preview; restore the original settings.
   - **Excecoes (GlazeWM)**: apps GlazeWM should not tile (games, launchers...). Add by name or from an open window.
   - **Transparencia**: make any window translucent with a slider and save it as a per-app rule.
 - **Terminal na area de trabalho**: optional fastfetch widget pinned to the desktop (Geral tab: toggle, corner and size 60-120%), refreshed every 45 s, with a close button.

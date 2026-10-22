@@ -29,7 +29,7 @@ if (Test-Path $manifest) {
         Invoke-Step "restaurar $orig" { Remove-Item $orig -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item $bak $orig -Recurse -Force }
     }
 }
-foreach ($p in @("$HOME\.glzr\glazewm\config.yaml", "$HOME\.glzr\zebar\linuxify-bar", "$HOME\.glzr\zebar\settings.json", "$HOME\.config\starship.toml")) {
+foreach ($p in @("$HOME\.glzr\glazewm\config.yaml", "$HOME\.glzr\zebar\linuxify-bar", "$HOME\.glzr\zebar\settings.json", "$HOME\.config\starship.toml", "$HOME\.config\fastfetch\logo.txt", "$HOME\.config\fastfetch\logo-default.txt")) {
     if (-not $restored[$p] -and (Test-Path $p)) { Invoke-Step "remover $p (nao existia antes)" { Remove-Item $p -Recurse -Force } }
 }
 $prof = $PROFILE.CurrentUserAllHosts

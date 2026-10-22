@@ -87,7 +87,9 @@ Put (Join-Path $C 'starship\starship.toml')     (Join-Path $HOME '.config\starsh
 $ff = Join-Path $HOME '.config\fastfetch\config.jsonc'
 if ((Test-Path $ff) -and -not (Test-Path (Join-Path $Data 'fastfetch.config.original.jsonc'))) { Copy-Item $ff (Join-Path $Data 'fastfetch.config.original.jsonc') }
 Put (Join-Path $C 'fastfetch\config.jsonc')     $ff
-Put (Join-Path $C 'fastfetch\anime-girl.txt')   (Join-Path $HOME '.config\fastfetch\anime-girl.txt')
+Put (Join-Path $C 'fastfetch\logo-default.txt') (Join-Path $HOME '.config\fastfetch\logo-default.txt')
+$logo = Join-Path $HOME '.config\fastfetch\logo.txt'
+if (-not (Test-Path $logo)) { Copy-Item (Join-Path $C 'fastfetch\logo-default.txt') $logo }
 
 # PowerShell profile hook (prompt + banner only when Linux mode is ON)
 $prof = $PROFILE.CurrentUserAllHosts
