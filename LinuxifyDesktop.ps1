@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS Linuxify desktop widget: fastfetch output pinned to the desktop (bottom of z-order).
-  Settings in %LOCALAPPDATA%\Linuxify\desktop.json: Enabled, Corner (TopLeft|TopRight|BottomLeft|BottomRight), Opacity (20-100), Refresh (s).
+  Settings in %LOCALAPPDATA%\Linuxify\desktop.json: Enabled, Corner (TopLeft|TopRight|BottomLeft|BottomRight), Opacity (20-100), Refresh (s), Scale (60-120, % of the base font size).
 #>
 $Data = Join-Path $env:LOCALAPPDATA 'Linuxify'
 $Cfg  = Join-Path $Data 'desktop.json'
 $mutex = New-Object System.Threading.Mutex($false, 'Local\LinuxifyDesktop')
 if (-not $mutex.WaitOne(0)) { return }
 function Get-DeskCfg {
-    $d = [pscustomobject]@{ Enabled = $true; Corner = 'BottomRight'; Opacity = 85; Refresh = 45 }
+    $d = [pscustomobject]@{ Enabled = $true; Corner = 'BottomRight'; Opacity = 85; Refresh = 45; Scale = 100 }
     if (Test-Path $Cfg) { try { $j = Get-Content $Cfg -Raw | ConvertFrom-Json; foreach ($p in $j.PSObject.Properties) { $d | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value -Force } } catch {} }
     $d
 }
@@ -100,20 +100,28 @@ function Convert-Ansi([string]$s) {
 }
 
 [void][LxDeskForm]::SetProcessDPIAware()
-$font = $null
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$global:LxFontName = 'Consolas'
 foreach ($f in 'JetBrainsMono NFM', 'JetBrainsMono Nerd Font Mono', 'JetBrainsMono NF', 'JetBrainsMono Nerd Font', 'CaskaydiaCove NFM', 'CaskaydiaCove NF', 'CaskaydiaCove Nerd Font', 'Cascadia Mono', 'Consolas') {
-    $t = New-Object System.Drawing.Font($f, 9); if ($t.Name -eq $f) { $font = $t; break }
+    $t = New-Object System.Drawing.Font($f, 9); if ($t.Name -eq $f) { $global:LxFontName = $f; $t.Dispose(); break }; $t.Dispose()
 }
-$symFont = New-Object System.Drawing.Font('Segoe UI Symbol', $font.Size)
+$tf = [System.Windows.Forms.TextFormatFlags]::NoPadding -bor [System.Windows.Forms.TextFormatFlags]::NoPrefix
+$global:LxScale = -1
+function Set-LxScale([int]$sc) {
+    $sc = [Math]::Max(60, [Math]::Min(120, $sc)); if ($sc -eq $global:LxScale) { return $false }
+    $global:LxScale = $sc; $pt = 9.0 * $sc / 100
+    $global:LxFont = New-Object System.Drawing.Font($global:LxFontName, [single]$pt)
+    $global:LxSym = New-Object System.Drawing.Font('Segoe UI Symbol', [single]$pt)
+    $global:LxCW = [System.Windows.Forms.TextRenderer]::MeasureText(('M' * 50), $global:LxFont, (New-Object System.Drawing.Size(9999, 99)), $tf).Width / 50.0
+    $global:LxLH = [Math]::Ceiling($global:LxFont.GetHeight() * 1.05)
+    return $true
+}
+[void](Set-LxScale ([int]$dc0.Scale))
 $form = New-Object LxDeskForm
 $form.Text = 'Linuxify Desktop'; $form.FormBorderStyle = 'None'; $form.ShowInTaskbar = $false; $form.TopMost = $false
 $form.StartPosition = 'Manual'; $form.BackColor = $Bg0; $form.Padding = New-Object System.Windows.Forms.Padding(14, 12, 14, 12)
 $form.Opacity = [Math]::Max(0.2, [Math]::Min(1.0, [double]$dc0.Opacity / 100))
 $global:LxGrid = New-Object System.Collections.ArrayList
-$tf = [System.Windows.Forms.TextFormatFlags]::NoPadding -bor [System.Windows.Forms.TextFormatFlags]::NoPrefix
-$global:LxCW = [System.Windows.Forms.TextRenderer]::MeasureText(('M' * 50), $font, (New-Object System.Drawing.Size(9999, 99)), $tf).Width / 50.0
-$global:LxLH = [Math]::Ceiling($font.GetHeight() * 1.05)
 $PadX = 16; $PadY = 14
 $form.add_Paint({
     $g = $_.Graphics; $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::ClearTypeGridFit
@@ -123,7 +131,7 @@ $form.add_Paint({
             $cell = $line[$c]; $x0 = [int]($PadX + $c * $global:LxCW)
             if ($cell[2]) { $b = New-Object System.Drawing.SolidBrush($cell[2]); $g.FillRectangle($b, $x0, $y, [int][Math]::Ceiling($global:LxCW), $global:LxLH); $b.Dispose() }
             if ($cell[0] -eq ' ') { continue }
-            $cp = [int][char]$cell[0][0]; $fnt = if ($cp -ge 0x2800 -and $cp -le 0x28FF) { $symFont } else { $font }
+            $cp = [int][char]$cell[0][0]; $fnt = if ($cp -ge 0x2800 -and $cp -le 0x28FF) { $global:LxSym } else { $global:LxFont }
             [System.Windows.Forms.TextRenderer]::DrawText($g, $cell[0], $fnt, (New-Object System.Drawing.Point($x0, $y)), $cell[1], $tf)
         }
     }
@@ -144,9 +152,9 @@ function Set-DeskPos {
     $py = if ($c -like 'Top*') { $wa.Top + $m + 40 } else { $wa.Bottom - $form.Height - $m }
     $form.Location = New-Object System.Drawing.Point($px, $py); $form.ToBottom()
 }
-function Update-Widget {
-    $grid = Convert-Ansi (Get-Fetch)
-    $global:LxGrid = $grid; $w = 0
+function Update-Widget { $global:LxGrid = Convert-Ansi (Get-Fetch); Update-Layout }
+function Update-Layout {
+    $grid = $global:LxGrid; $w = 0
     foreach ($ln in $grid) { if ($ln.Count -gt $w) { $w = $ln.Count } }
     $form.ClientSize = New-Object System.Drawing.Size(([int][Math]::Ceiling($w * $global:LxCW) + 2 * $PadX + 10), ([int]([Math]::Max(3, $grid.Count) * $global:LxLH) + 2 * $PadY))
     $form.Invalidate()
@@ -158,6 +166,6 @@ $form.add_Shown({ Update-Widget })
 $tm = New-Object System.Windows.Forms.Timer; $tm.Interval = [Math]::Max(15, [int]$dc0.Refresh) * 1000
 $tm.add_Tick({ if (-not (Get-DeskCfg).Enabled) { $form.Close(); return }; Update-Widget }); $tm.Start()
 $tw = New-Object System.Windows.Forms.Timer; $tw.Interval = 1500
-$tw.add_Tick({ $c = Get-DeskCfg; if (-not $c.Enabled) { $form.Close(); return }; if ([string]$c.Corner -ne $global:LxDeskCorner) { Set-DeskPos } }); $tw.Start()
+$tw.add_Tick({ $c = Get-DeskCfg; if (-not $c.Enabled) { $form.Close(); return }; if (Set-LxScale ([int]$c.Scale)) { Update-Layout } elseif ([string]$c.Corner -ne $global:LxDeskCorner) { Set-DeskPos } }); $tw.Start()
 [System.Windows.Forms.Application]::Run($form)
 $mutex.ReleaseMutex()

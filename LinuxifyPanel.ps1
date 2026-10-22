@@ -291,16 +291,23 @@ $l = New-Lbl 'Instalar/Desinstalar usa o winget (abre uma janela pra voce acompa
 $cbBoot = New-Object System.Windows.Forms.CheckBox; $cbBoot.Text = 'Iniciar com o Windows'; $cbBoot.AutoSize = $true; $cbBoot.Location = '22,456'; $cbBoot.ForeColor = $cText; $pg.Controls.Add($cbBoot)
 $cbBoot.add_Click({ & powershell -NoProfile -ExecutionPolicy Bypass -File $Tray -Action $(if ($cbBoot.Checked) { 'TrayAutostartOn' } else { 'TrayAutostartOff' }) })
 $DeskCfg = Join-Path $Data 'desktop.json'
-function Get-DeskSet { $d = [pscustomobject]@{ Enabled = $false; Corner = 'BottomRight'; Opacity = 85; Refresh = 45 }; if (Test-Path $DeskCfg) { try { $j = Get-Content $DeskCfg -Raw | ConvertFrom-Json; foreach ($p in $j.PSObject.Properties) { $d | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value -Force } } catch {} }; $d }
+function Get-DeskSet { $d = [pscustomobject]@{ Enabled = $false; Corner = 'BottomRight'; Opacity = 85; Refresh = 45; Scale = 100 }; if (Test-Path $DeskCfg) { try { $j = Get-Content $DeskCfg -Raw | ConvertFrom-Json; foreach ($p in $j.PSObject.Properties) { $d | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value -Force } } catch {} }; $d }
 function Save-DeskSet($c) { [IO.File]::WriteAllText($DeskCfg, ($c | ConvertTo-Json), (New-Object System.Text.UTF8Encoding($false))) }
 function Stop-Desk { Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object CommandLine -like '*LinuxifyDesktop.ps1*' | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } }
 function Start-Desk { Stop-Desk; Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Data\LinuxifyDesktop.ps1`"" }
 $cbDesk = New-Object System.Windows.Forms.CheckBox; $cbDesk.Text = 'Terminal na area de trabalho'; $cbDesk.AutoSize = $true; $cbDesk.Location = '22,484'; $cbDesk.ForeColor = $cText; $pg.Controls.Add($cbDesk)
-$cbCorner = New-Object System.Windows.Forms.ComboBox; $cbCorner.DropDownStyle = 'DropDownList'; $cbCorner.FlatStyle = 'Flat'; $cbCorner.SetBounds(260, 482, 140, 24)
+$cbCorner = New-Object System.Windows.Forms.ComboBox; $cbCorner.DropDownStyle = 'DropDownList'; $cbCorner.FlatStyle = 'Flat'; $cbCorner.SetBounds(260, 482, 140, 24); $cbCorner.BackColor = $cS0; $cbCorner.ForeColor = $cText
 [void]$cbCorner.Items.AddRange([object[]]@('BottomRight', 'BottomLeft', 'TopRight', 'TopLeft')); $pg.Controls.Add($cbCorner)
 $ds0 = Get-DeskSet; $cbDesk.Checked = [bool]$ds0.Enabled; $cbCorner.SelectedItem = [string]$ds0.Corner; if ($cbCorner.SelectedIndex -lt 0) { $cbCorner.SelectedIndex = 0 }
 $cbDesk.add_Click({ $c = Get-DeskSet; $c.Enabled = $cbDesk.Checked; Save-DeskSet $c; if ($cbDesk.Checked) { Start-Desk } else { Stop-Desk } })
 $cbCorner.add_SelectedIndexChanged({ $c = Get-DeskSet; if ($c.Corner -ne [string]$cbCorner.SelectedItem) { $c.Corner = [string]$cbCorner.SelectedItem; Save-DeskSet $c } })
+$lSz = New-Lbl 'Tamanho' $fS $cOv; $lSz.Location = '40,520'; $pg.Controls.Add($lSz)
+$trSz = New-Object System.Windows.Forms.TrackBar; $trSz.Minimum = 60; $trSz.Maximum = 120; $trSz.SmallChange = 10; $trSz.LargeChange = 10; $trSz.TickStyle = 'None'; $trSz.AutoSize = $false; $trSz.SetBounds(110, 514, 290, 30); $trSz.BackColor = $pg.BackColor; $pg.Controls.Add($trSz)
+$lSzV = New-Lbl '100%' $fS $cText; $lSzV.Location = '408,520'; $pg.Controls.Add($lSzV)
+$trSz.Value = [Math]::Max(60, [Math]::Min(120, [int]$ds0.Scale)); $lSzV.Text = "$($trSz.Value)%"
+$trSz.add_ValueChanged({ $lSzV.Text = "$($trSz.Value)%" })
+$trSz.add_MouseUp({ $c = Get-DeskSet; if ([int]$c.Scale -ne $trSz.Value) { $c.Scale = $trSz.Value; Save-DeskSet $c } })
+$trSz.add_KeyUp({ $c = Get-DeskSet; if ([int]$c.Scale -ne $trSz.Value) { $c.Scale = $trSz.Value; Save-DeskSet $c } })
 $bAll = New-Btn 'Desinstalar tudo...' 'dg'; $bAll.Location = '20,590'; $pg.Controls.Add($bAll)
 $bAll.add_Click({ if ([System.Windows.Forms.MessageBox]::Show('Desfazer tudo e restaurar as configs originais?', 'Linuxify', 'YesNo', 'Warning') -eq 'Yes') { Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$Data\uninstall.ps1`" -Force"; $form.Close() } })
 $bDir = New-Btn 'Abrir pasta'; $bDir.AutoSize = $false; $bDir.SetBounds(400, 590, 180, 32); $pg.Controls.Add($bDir)

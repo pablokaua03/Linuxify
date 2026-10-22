@@ -19,7 +19,7 @@ Linuxify is a small tray app plus a settings panel that glues together
   - **Terminal**: paste any ASCII banner, pick color scheme, ASCII color, font, opacity and acrylic; live preview; restore the original settings.
   - **Excecoes (GlazeWM)**: apps GlazeWM should not tile (games, launchers...). Add by name or from an open window.
   - **Transparencia**: make any window translucent with a slider and save it as a per-app rule.
-- **Terminal na area de trabalho**: optional fastfetch widget pinned to the desktop (Geral tab toggle + corner), refreshed every 45 s, with a close button.
+- **Terminal na area de trabalho**: optional fastfetch widget pinned to the desktop (Geral tab: toggle, corner and size 60-120%), refreshed every 45 s, with a close button.
 - Catppuccin Mocha everywhere.
 - Every config it touches is backed up first; uninstall restores the originals.
 
