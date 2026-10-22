@@ -1,5 +1,9 @@
 {
   "@name": "English",
+  "Bottom right": "Bottom right",
+  "Bottom left": "Bottom left",
+  "Top right": "Top right",
+  "Top left": "Top left",
   "\"Games (scan)\" items belong to the games rule; edit them via the scan.": "\"Games (scan)\" items belong to the games rule; edit them via the scan.",
   "(none)": "(none)",
   "(y/N)": "(y/N)",

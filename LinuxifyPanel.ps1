@@ -382,7 +382,7 @@ $icF = @('Segoe Fluent Icons', 'Segoe MDL2 Assets') | Where-Object { (New-Object
 $fIc = if ($icF) { New-Object System.Drawing.Font($icF, 12) } else { $null }
 $fIcB = if ($icF) { New-Object System.Drawing.Font($icF, 15) } else { $null }
 $Assets = @((Join-Path $PSScriptRoot 'assets'), (Join-Path $Data 'assets')) | Where-Object { Test-Path $_ } | Select-Object -First 1
-$LxVer = 'v0.2.0'
+$LxVer = 'v0.2.1'
 $monoName = @('JetBrainsMono Nerd Font','JetBrains Mono','Cascadia Mono','Consolas') | Where-Object { (New-Object System.Drawing.Font($_, 9)).Name -eq $_ } | Select-Object -First 1
 $fM  = New-Object System.Drawing.Font($monoName, 9)
 
@@ -475,10 +475,11 @@ function Stop-Desk { Get-CimInstance Win32_Process -Filter "Name='powershell.exe
 function Start-Desk { Stop-Desk; Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Data\LinuxifyDesktop.ps1`"" }
 $cbDesk = New-Object System.Windows.Forms.CheckBox; $cbDesk.Text = (T 'Terminal on the desktop'); $cbDesk.AutoSize = $true; $cbDesk.Location = '22,484'; $cbDesk.ForeColor = $cText; $pg.Controls.Add($cbDesk)
 $cbCorner = New-Object LxCombo; $cbCorner.DropDownStyle = 'DropDownList'; $cbCorner.FlatStyle = 'Flat'; $cbCorner.SetBounds(260, 482, 140, 24); $cbCorner.BackColor = $cS0; $cbCorner.ForeColor = $cText
-[void]$cbCorner.Items.AddRange([object[]]@('BottomRight', 'BottomLeft', 'TopRight', 'TopLeft')); $pg.Controls.Add($cbCorner)
-$ds0 = Get-DeskSet; $cbDesk.Checked = [bool]$ds0.Enabled; $cbCorner.SelectedItem = [string]$ds0.Corner; if ($cbCorner.SelectedIndex -lt 0) { $cbCorner.SelectedIndex = 0 }
+$CornerKeys = @('BottomRight', 'BottomLeft', 'TopRight', 'TopLeft'); $CornerText = @{ BottomRight = 'Bottom right'; BottomLeft = 'Bottom left'; TopRight = 'Top right'; TopLeft = 'Top left' }
+[void]$cbCorner.Items.AddRange([object[]]@($CornerKeys | ForEach-Object { T $CornerText[$_] })); $pg.Controls.Add($cbCorner)
+$ds0 = Get-DeskSet; $cbDesk.Checked = [bool]$ds0.Enabled; $cbCorner.SelectedIndex = [array]::IndexOf($CornerKeys, [string]$ds0.Corner); if ($cbCorner.SelectedIndex -lt 0) { $cbCorner.SelectedIndex = 0 }
 $cbDesk.add_Click({ $c = Get-DeskSet; $c.Enabled = $cbDesk.Checked; Save-DeskSet $c; if ($cbDesk.Checked) { Start-Desk } else { Stop-Desk } })
-$cbCorner.add_SelectedIndexChanged({ $c = Get-DeskSet; if ($c.Corner -ne [string]$cbCorner.SelectedItem) { $c.Corner = [string]$cbCorner.SelectedItem; Save-DeskSet $c } })
+$cbCorner.add_SelectedIndexChanged({ $c = Get-DeskSet; $k = $CornerKeys[$cbCorner.SelectedIndex]; if ($c.Corner -ne $k) { $c.Corner = $k; Save-DeskSet $c } })
 $lSz = New-Lbl (T 'Size') $fS $cOv; $lSz.Location = '40,520'; $pg.Controls.Add($lSz)
 $trSz = New-Object LxSlider; $trSz.Minimum = 60; $trSz.Maximum = 120; $trSz.SmallChange = 10; $trSz.LargeChange = 10; $trSz.TickStyle = 'None'; $trSz.AutoSize = $false; $trSz.SetBounds(110, 514, 290, 30); $trSz.BackColor = $pg.BackColor; $pg.Controls.Add($trSz)
 $lSzV = New-Lbl '100%' $fS $cText; $lSzV.Location = '408,520'; $pg.Controls.Add($lSzV)

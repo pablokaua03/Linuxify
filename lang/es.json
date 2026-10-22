@@ -1,5 +1,9 @@
 {
   "@name": "Español",
+  "Bottom right": "Inferior derecha",
+  "Bottom left": "Inferior izquierda",
+  "Top right": "Superior derecha",
+  "Top left": "Superior izquierda",
   "\"Games (scan)\" items belong to the games rule; edit them via the scan.": "Los elementos \"Juegos (scan)\" pertenecen a la regla de juegos; edítalos desde el scan.",
   "(none)": "(ninguna)",
   "(y/N)": "(s/N)",

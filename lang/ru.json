@@ -1,5 +1,9 @@
 {
   "@name": "Русский",
+  "Bottom right": "Снизу справа",
+  "Bottom left": "Снизу слева",
+  "Top right": "Сверху справа",
+  "Top left": "Сверху слева",
   "\"Games (scan)\" items belong to the games rule; edit them via the scan.": "Элементы «Игры (scan)» относятся к правилу игр; меняйте их через сканирование.",
   "(none)": "(нет)",
   "(y/N)": "(y/N)",
