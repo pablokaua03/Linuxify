@@ -15,6 +15,8 @@ $WtOrig = Join-Path $Data 'wt.settings.original.json'
 $Glz    = Join-Path $HOME '.glzr\glazewm\config.yaml'
 $FfDir  = Join-Path $HOME '.config\fastfetch'
 $FfCfg  = Join-Path $FfDir 'config.jsonc'
+$FfLogo = Join-Path $FfDir 'logo.txt'          # banner atual (fastfetch + widget)
+$FfDef  = Join-Path $FfDir 'logo-default.txt'  # banner padrao do Linuxify
 $Prefs  = Join-Path $Data 'panel.json'
 $Utf8   = New-Object System.Text.UTF8Encoding($false)
 
@@ -167,14 +169,14 @@ function Apply-Terminal($p) {
     # banner -> logo do fastfetch (o resto do perfil vem do fastfetch/starship)
     if ($p.Banner.Trim()) {
         New-Item -ItemType Directory -Force $FfDir | Out-Null
-        Write-NoBom (Join-Path $FfDir 'banner.txt') ($p.Banner -replace "`r`n", "`n")
+        Write-NoBom $FfLogo ($p.Banner -replace "`r`n", "`n")
         if (Test-Path $FfCfg) {
             $ffo = Join-Path $Data 'fastfetch.config.original.jsonc'
             if (-not (Test-Path $ffo)) { Copy-Item $FfCfg $ffo }
             Backup-File $FfCfg | Out-Null
             $c = [System.Drawing.ColorTranslator]::FromHtml($p.AsciiColor)
             $t = Read-Text $FfCfg
-            $t = $t -replace '"source":\s*"[^"]*"', '"source": "~/.config/fastfetch/banner.txt"'
+            $t = $t -replace '"source":\s*"[^"]*"', '"source": "~/.config/fastfetch/logo.txt"'
             $t = $t -replace '"1":\s*"[^"]*"', ('"1": "38;2;{0};{1};{2}"' -f $c.R, $c.G, $c.B)
             Write-NoBom $FfCfg $t
         }
@@ -188,6 +190,14 @@ function Restore-Terminal {
     Copy-Item $WtOrig $WtSet -Force
     $ffo = Join-Path $Data 'fastfetch.config.original.jsonc'
     if ((Test-Path $ffo) -and (Test-Path $FfCfg)) { Backup-File $FfCfg | Out-Null; Copy-Item $ffo $FfCfg -Force }
+    Restore-Banner
+}
+function Restore-Banner {
+    if (-not (Test-Path $FfDef)) { return }
+    if (Test-Path $FfLogo) { Backup-File $FfLogo | Out-Null }
+    Copy-Item $FfDef $FfLogo -Force
+    if (Test-Path $FfCfg) { $t = Read-Text $FfCfg; $t2 = $t -replace '"source":\s*"[^"]*"', '"source": "~/.config/fastfetch/logo.txt"'; if ($t2 -ne $t) { Backup-File $FfCfg | Out-Null; Write-NoBom $FfCfg $t2 } }
+    if (Test-Path $Prefs) { try { $sv = Read-Text $Prefs | ConvertFrom-Json; $sv.PSObject.Properties.Remove('Banner'); Write-NoBom $Prefs ($sv | ConvertTo-Json) } catch {} }
 }
 
 # ---------------- UI ----------------
@@ -331,6 +341,7 @@ $pt = $pages['term']
 $pref = @{ Scheme = 'Catppuccin Mocha'; Font = $monoName; Size = 11; Opacity = 85; Acrylic = $true; AsciiColor = '#cba6f7'; Banner = "  _     _`n | |   (_)_ __  _   ___  __`n | |   | | '_ \| | | \ \/ /`n | |___| | | | | |_| |>  <`n |_____|_|_| |_|\__,_/_/\_\" }
 if (Test-Path $WtSet) { try { $d = (Read-Text $WtSet | ConvertFrom-Json).profiles.defaults; if ($d.colorScheme -and $Schemes[$d.colorScheme]) { $pref.Scheme = $d.colorScheme }; if ($d.font.face) { $pref.Font = $d.font.face }; if ($d.font.size) { $pref.Size = $d.font.size }; if ($d.opacity) { $pref.Opacity = $d.opacity }; if ($null -ne $d.useAcrylic) { $pref.Acrylic = $d.useAcrylic } } catch {} }
 if (Test-Path $Prefs) { try { $sv = Read-Text $Prefs | ConvertFrom-Json; foreach ($k in 'AsciiColor', 'Banner') { if ($sv.$k) { $pref[$k] = $sv.$k } } } catch {} }
+if (Test-Path $FfLogo) { try { $lg = Read-Text $FfLogo; if ($lg.Trim()) { $pref.Banner = $lg.TrimEnd() } } catch {} }
 $l = New-Lbl 'BANNER ASCII' $fS $cSub; $l.Location = '20,16'; $pt.Controls.Add($l)
 $tbB = New-Object System.Windows.Forms.TextBox; $tbB.Multiline = $true; $tbB.ScrollBars = 'Both'; $tbB.WordWrap = $false; $tbB.SetBounds(20, 36, 270, 170); $tbB.BackColor = $cMantle; $tbB.ForeColor = $cText; $tbB.BorderStyle = 'FixedSingle'; $tbB.Font = $fM; $tbB.Text = ($pref.Banner -replace "\r?\n", "`r`n"); $pt.Controls.Add($tbB)
 $l = New-Lbl 'Cole seu ASCII aqui - o resto e montado sozinho' $fS $cOv; $l.Location = '20,210'; $pt.Controls.Add($l)
