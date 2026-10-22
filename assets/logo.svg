@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect x="24" y="24" width="976" height="976" rx="200" fill="#2d2f44"/>
+  <!-- body + flippers -->
+  <path fill="#a1749b" d="M360 450 C300 480 230 560 210 640 C200 690 220 715 245 700 C265 680 280 655 305 648 C305 720 330 790 405 810 L620 810 C695 790 720 720 718 648 C745 655 760 680 780 700 C805 715 825 690 815 640 C795 560 725 480 665 450 Z"/>
+  <!-- belly / feet -->
+  <path fill="#fcb78d" d="M512 710 C470 760 440 790 405 805 L420 828 L605 828 L622 805 C585 790 555 760 512 710 Z"/>
+  <!-- head -->
+  <path fill="#b797d6" d="M345 450 L345 330 C345 245 420 187 514 187 C608 187 683 245 683 330 L683 450 Z"/>
+  <!-- face -->
+  <path fill="#2d2f44" d="M380 440 L375 385 C372 335 400 315 432 315 C470 315 500 345 512 380 C524 345 554 315 592 315 C624 315 652 335 649 385 L644 440 Z"/>
+  <ellipse cx="441" cy="398" rx="24" ry="22" fill="#abdfc8"/>
+  <ellipse cx="585" cy="398" rx="24" ry="22" fill="#abdfc8"/>
+  <!-- tiled windows -->
+  <rect x="358" y="424" width="310" height="296" rx="26" fill="#2d2f44"/>
+  <rect x="377" y="442" width="127" height="121" rx="12" fill="#abdfc8"/>
+  <rect x="522" y="442" width="128" height="121" rx="12" fill="#fcb78d"/>
+  <rect x="377" y="581" width="127" height="119" rx="12" fill="#b797d6"/>
+  <rect x="522" y="581" width="128" height="119" rx="12" fill="#b181ab"/>
+</svg>

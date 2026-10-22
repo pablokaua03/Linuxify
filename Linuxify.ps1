@@ -99,42 +99,56 @@ public class HotkeyWindow : NativeWindow, IDisposable {
 '@
 
 . (Join-Path $Data 'LinuxifyAlpha.ps1')
+$__lf = Join-Path $Data 'LinuxifyLang.ps1'; if (-not (Test-Path $__lf)) { $__lf = Join-Path $PSScriptRoot 'LinuxifyLang.ps1' }; if (Test-Path $__lf) { . $__lf } else { function T([string]$k) { $k } }
 function New-StateIcon([bool]$On) {
     $bmp = New-Object System.Drawing.Bitmap 16, 16
     $g = [System.Drawing.Graphics]::FromImage($bmp); $g.SmoothingMode = 'AntiAlias'
     $col = if ($On) { [System.Drawing.Color]::FromArgb(203, 166, 247) } else { [System.Drawing.Color]::FromArgb(108, 112, 134) }
-    $g.Dispose(); $bmp.Dispose(); $bmp = [LxAlpha]::Logo(16, $col); [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
+    $g.Dispose(); $bmp.Dispose()
+    $sz = [System.Windows.Forms.SystemInformation]::SmallIconSize.Width; if ($sz -lt 16) { $sz = 16 }
+    $pn = if ($sz -le 16) { 'logo-16.png' } elseif ($sz -le 24) { 'logo-24.png' } else { 'logo-32.png' }
+    $png = @((Join-Path $Data "assets\$pn"), (Join-Path $PSScriptRoot "assets\$pn")) | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($png) {
+        $src = [System.Drawing.Image]::FromFile($png); $bmp = New-Object System.Drawing.Bitmap $sz, $sz; $g = [System.Drawing.Graphics]::FromImage($bmp)
+        $g.InterpolationMode = 'HighQualityBicubic'; $ia = New-Object System.Drawing.Imaging.ImageAttributes
+        if (-not $On) { $m = New-Object System.Drawing.Imaging.ColorMatrix(,[single[][]]@(@(0.3,0.3,0.3,0,0), @(0.59,0.59,0.59,0,0), @(0.11,0.11,0.11,0,0), @(0,0,0,0.85,0), @(0,0,0,0,1))); $ia.SetColorMatrix($m) }
+        $g.DrawImage($src, (New-Object System.Drawing.Rectangle 0, 0, $sz, $sz), 0, 0, $src.Width, $src.Height, 'Pixel', $ia); $g.Dispose(); $src.Dispose()
+        return [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
+    }
+    $bmp = [LxAlpha]::Logo(16, $col); [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
 }
 
 $tray = New-Object System.Windows.Forms.NotifyIcon
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
-$miPanel = $menu.Items.Add('Abrir painel...')
+$miPanel = $menu.Items.Add('')
 $miPanel.Font = New-Object System.Drawing.Font($miPanel.Font, [System.Drawing.FontStyle]::Bold)
-$miToggle = $menu.Items.Add('Modo Linux')
-$miBoot = New-Object System.Windows.Forms.ToolStripMenuItem 'Iniciar com o Windows'
+$miToggle = $menu.Items.Add('')
+$miBoot = New-Object System.Windows.Forms.ToolStripMenuItem ''
 $menu.Items.Add($miBoot) | Out-Null
 $menu.Items.Add('-') | Out-Null
-$miUninst = $menu.Items.Add('Desinstalar tudo...')
-$miExit = $menu.Items.Add('Sair do Linuxify')
+$miUninst = $menu.Items.Add('')
+$miExit = $menu.Items.Add('')
 
 function Update-Ui {
     $on = Get-LinuxState
+    if ((Get-Command Get-LxLang -ErrorAction SilentlyContinue) -and (Get-LxLang) -ne $global:LxLang) { Import-LxLang }
+    $miPanel.Text = T 'Open panel...'; $miBoot.Text = T 'Start with Windows'; $miUninst.Text = T 'Uninstall everything...'; $miExit.Text = T 'Quit Linuxify'
     $tray.Icon = New-StateIcon $on
     $tray.Text = "Linuxify: $(if ($on) {'ON'} else {'OFF'}) (Ctrl+Alt+L)"
-    $miToggle.Text = if ($on) { 'Modo Linux: ON  (clique p/ desligar)' } else { 'Modo Linux: OFF (clique p/ ligar)' }
+    $miToggle.Text = if ($on) { T 'Linux mode: ON  (click to turn off)' } else { T 'Linux mode: OFF (click to turn on)' }
     $miBoot.Checked = [bool](Get-ItemProperty $Run -Name 'Linuxify' -ErrorAction SilentlyContinue)
 }
 function Switch-Mode {
     if (Get-LinuxState) { Disable-Linux } else { Enable-Linux }
     Update-Ui
-    $tray.ShowBalloonTip(1500, 'Linuxify', "Modo Linux $(if (Get-LinuxState) {'ON'} else {'OFF'})", 'None')
+    $tray.ShowBalloonTip(1500, 'Linuxify', "$(T 'Linux mode') $(if (Get-LinuxState) {'ON'} else {'OFF'})", 'None')
 }
 $miToggle.add_Click({ Switch-Mode })
 function Open-Panel { Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Data\LinuxifyPanel.ps1`"" }
 $miPanel.add_Click({ Open-Panel })
 $miBoot.add_Click({ Set-TrayAutostart (-not $miBoot.Checked); Update-Ui })
 $miUninst.add_Click({
-    $r = [System.Windows.Forms.MessageBox]::Show('Desfazer tudo e restaurar as configs originais?', 'Linuxify', 'YesNo', 'Warning')
+    $r = [System.Windows.Forms.MessageBox]::Show((T 'Undo everything and restore the original configs?'), 'Linuxify', 'YesNo', 'Warning')
     if ($r -eq 'Yes') {
         $tray.Visible = $false
         Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$Data\uninstall.ps1`" -Force"
@@ -143,13 +157,14 @@ $miUninst.add_Click({
 })
 $miExit.add_Click({ $tray.Visible = $false; [System.Windows.Forms.Application]::Exit() })
 $tray.ContextMenuStrip = $menu
+$menu.add_Opening({ Update-Ui })
 $tray.add_MouseClick({ if ($_.Button -eq 'Left') { Switch-Mode } })
 
 $hk = New-Object HotkeyWindow ([uint32](0x0001 -bor 0x0002 -bor 0x4000), [uint32]0x4C)  # Alt|Ctrl|NoRepeat + L
 $hk.add_Pressed({ Switch-Mode })
 Update-Ui
 $tray.Visible = $true
-if (-not $hk.Ok) { $tray.ShowBalloonTip(3000, 'Linuxify', 'Ctrl+Alt+L ja esta em uso; use o icone.', 'Warning') }
+if (-not $hk.Ok) { $tray.ShowBalloonTip(3000, 'Linuxify', (T 'Ctrl+Alt+L is already in use; use the icon.'), 'Warning') }
 # Transparencia: reaplica regras salvas (inicio + janelas novas) se 'Aplicar ao iniciar'
 $tmT = New-Object System.Windows.Forms.Timer; $tmT.Interval = 1500
 $tmT.add_Tick({ try { $c = Get-LxTransp; if ($c.ApplyOnStart -ne $false) { Invoke-LxTranspRules $c }; Invoke-LxTranspManual } catch {} }); $tmT.Start()

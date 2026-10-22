@@ -85,6 +85,8 @@ window_rules:
     match:
       - window_process: { equals: 'zebar' }
       - window_title: { equals: 'Linuxify Desktop' }
+      - window_title: { equals: 'Linuxify' }
+        window_process: { regex: '^(powershell|pwsh|Linuxify)$' }
       - window_title: { regex: '[Pp]icture.in.[Pp]icture' }
         window_class: { regex: 'Chrome_WidgetWin_1|MozillaDialogClass' }
       - window_process: { equals: 'PowerToys' }

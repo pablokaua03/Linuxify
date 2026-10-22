@@ -16,8 +16,10 @@ $Manifest = Join-Path $Data 'backups.txt'
 $Stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
 
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+. (Join-Path $Src 'LinuxifyLang.ps1')
 function Say([string]$m, [string]$c = 'Cyan') { Write-Host "==> $m" -ForegroundColor $c }
-function Ask([string]$q) { if ($Yes) { return $true }; (Read-Host "$q (y/N)") -match '^[yYsS]' }
+function Ask([string]$q) { if ($Yes) { return $true }; (Read-Host "$q $(T '(y/N)')") -match '^[yYsS\u0434\u0414]' }
 function Backup-Path([string]$Path) {
     if (-not (Test-Path $Path)) { return }
     $dir = Join-Path $Data ("backup\install-$Stamp")
@@ -34,7 +36,7 @@ function Put([string]$From, [string]$To) {
     Copy-Item $From $To -Recurse -Force
 }
 
-Say 'Linuxify installer'
+Say (T 'Linuxify installer')
 New-Item -ItemType Directory -Force $Data | Out-Null
 
 # 1. stop a running tray so files can be replaced
@@ -43,34 +45,34 @@ Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='Linuxify.e
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
 # 2. copy the kit
-Say "Copying files to $Data"
-foreach ($f in 'Linuxify.ps1', 'LinuxifyPanel.ps1', 'LinuxifyAlpha.ps1', 'LinuxifyDesktop.ps1', 'uninstall.ps1', 'Linuxify.exe') {
+Say ((T 'Copying files to {0}') -f $Data)
+foreach ($f in 'Linuxify.ps1', 'LinuxifyPanel.ps1', 'LinuxifyAlpha.ps1', 'LinuxifyDesktop.ps1', 'LinuxifyLang.ps1', 'uninstall.ps1', 'Linuxify.exe') {
     $p = Join-Path $Src $f; if (Test-Path $p) { Copy-Item $p $Data -Force }
 }
-foreach ($d in 'configs') { Copy-Item (Join-Path $Src $d) $Data -Recurse -Force }
+foreach ($d in 'configs', 'lang', 'assets') { Copy-Item (Join-Path $Src $d) $Data -Recurse -Force }
 New-Item -ItemType Directory -Force (Join-Path $Data 'shell') | Out-Null
 Copy-Item (Join-Path $Src 'configs\shell\init.ps1') (Join-Path $Data 'shell\init.ps1') -Force
 
 # 3. dependencies
 $deps = [ordered]@{
-    'glzr-io.glazewm'        = 'GlazeWM (tiling window manager)'
-    'glzr-io.zebar'          = 'Zebar (top bar)'
-    'RamenSoftware.Windhawk' = 'Windhawk (taskbar mods)'
-    'Fastfetch-cli.Fastfetch'= 'fastfetch (terminal banner)'
-    'Starship.Starship'      = 'Starship (prompt)'
+    'glzr-io.glazewm'        = 'GlazeWM (' + (T 'Tiling window manager') + ')'
+    'glzr-io.zebar'          = 'Zebar (' + (T 'Top bar') + ')'
+    'RamenSoftware.Windhawk' = 'Windhawk (' + (T 'taskbar mods') + ')'
+    'Fastfetch-cli.Fastfetch'= 'fastfetch (' + (T 'terminal banner') + ')'
+    'Starship.Starship'      = 'Starship (' + (T 'prompt') + ')'
 }
 if (-not $NoDeps) {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        Say 'winget not found. Install "App Installer" from the Microsoft Store, or install the apps manually.' 'Yellow'
+        Say (T 'winget not found. Install "App Installer" from the Microsoft Store, or install the apps manually.') 'Yellow'
     } else {
-        Write-Host 'Linuxify uses these apps (installed with winget):'
+        Write-Host (T 'Linuxify uses these apps (installed with winget):')
         $deps.GetEnumerator() | ForEach-Object { Write-Host "   - $($_.Value)  [$($_.Key)]" }
-        if (Ask 'Install/update them now?') {
+        if (Ask (T 'Install/update them now?')) {
             foreach ($id in $deps.Keys) {
                 Say "winget install $id"
                 winget install --id $id -e --accept-package-agreements --accept-source-agreements --silent
             }
-            if (Ask 'Install the optional JetBrainsMono Nerd Font?') {
+            if (Ask (T 'Install the optional JetBrainsMono Nerd Font?')) {
                 winget install --id DEVCOM.JetBrainsMonoNerdFont -e --accept-package-agreements --accept-source-agreements --silent
             }
         }
@@ -78,7 +80,7 @@ if (-not $NoDeps) {
 }
 
 # 4. configs (existing files are backed up first; uninstall restores them)
-Say 'Writing configs (backups in Linuxify\backup)'
+Say (T 'Writing configs (backups in Linuxify\backup)')
 $C = Join-Path $Data 'configs'
 Put (Join-Path $C 'glazewm\config.yaml')        (Join-Path $HOME '.glzr\glazewm\config.yaml')
 Put (Join-Path $C 'zebar\linuxify-bar')         (Join-Path $HOME '.glzr\zebar\linuxify-bar')
@@ -116,18 +118,18 @@ if (Test-Path $wt) {
         if (-not $o.profiles.PSObject.Properties['defaults']) { $o.profiles | Add-Member -NotePropertyName defaults -NotePropertyValue ([pscustomobject]@{}) }
         foreach ($p in $defs.PSObject.Properties) { $o.profiles.defaults | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value -Force }
         [IO.File]::WriteAllText((Join-Path $Data 'wt.settings.linux.json'), ($o | ConvertTo-Json -Depth 32), $Utf8)
-    } catch { Say "Windows Terminal theme skipped: $_" 'Yellow' }
-} else { Say 'Windows Terminal settings not found; theme skipped.' 'Yellow' }
+    } catch { Say ((T 'Windows Terminal theme skipped: {0}') -f $_) 'Yellow' }
+} else { Say (T 'Windows Terminal settings not found; theme skipped.') 'Yellow' }
 
-Say 'Windhawk: import configs\windhawk\windows-11-taskbar-styler.json in the "Windows 11 Taskbar Styler" mod settings (optional).' 'DarkGray'
+Say (T 'Windhawk: import configs\windhawk\windows-11-taskbar-styler.json in the "Windows 11 Taskbar Styler" mod settings (optional).') 'DarkGray'
 
 # 5. startup + tray
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Data 'Linuxify.ps1') -Action TrayAutostartOn
-Say 'Startup registered (HKCU Run: Linuxify)'
+Say (T 'Startup registered (HKCU Run: Linuxify)')
 if (-not $NoStart) {
     $exe = Join-Path $Data 'Linuxify.exe'
     if (Test-Path $exe) { Start-Process $exe }
     else { Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Data\Linuxify.ps1`"" }
-    Say 'Tray started. Left-click the icon or press Ctrl+Alt+L to toggle Linux mode.' 'Green'
+    Say (T 'Tray started. Left-click the icon or press Ctrl+Alt+L to toggle Linux mode.') 'Green'
 }
-Say 'Done.' 'Green'
+Say (T 'Done.') 'Green'
