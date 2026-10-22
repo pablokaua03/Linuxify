@@ -12,7 +12,6 @@
     <span class="pill" id="net"></span>
     <span class="pill" id="cpu"></span>
     <span class="pill" id="mem"></span>
-    <span class="pill" id="vol"></span>
     <span class="pill" id="bat"></span>
   </div>
 </div>
@@ -24,7 +23,6 @@ const p = zebar.createProviderGroup({
   memory: { type: 'memory', refreshInterval: 3000 },
   network: { type: 'network', refreshInterval: 5000 },
   battery: { type: 'battery', refreshInterval: 10000 },
-  audio: { type: 'audio' },
   date: { type: 'date', formatting: 'EEE dd MMM  HH:mm', locale: 'pt-BR' },
 });
 const $ = (id) => document.getElementById(id);
@@ -43,9 +41,6 @@ function render(o) {
   $('mem').textContent = o.memory ? `\uefc5 ${Math.round(o.memory.usage)}%` : '';
   const n = o.network?.defaultInterface;
   $('net').textContent = !n ? '\udb82\udcfd off' : n.type === 'wifi' ? `\uf1eb ${o.network.defaultGateway?.ssid ?? ''}` : '\udb80\ude00 eth';
-  const a = o.audio?.defaultPlaybackDevice;
-  $('vol').textContent = a ? `\uf028 ${a.volume}%` : '';
-  $('vol').onwheel = (e) => a && o.audio.setVolume(Math.max(0, Math.min(100, a.volume + (e.deltaY < 0 ? 5 : -5))));
   const bt = o.battery;
   $('bat').style.display = bt ? '' : 'none';
   if (bt) $('bat').textContent = `${bt.isCharging ? '\uf0e7' : '\uf240'} ${Math.round(bt.chargePercent)}%`;

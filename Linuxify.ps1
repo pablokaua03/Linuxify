@@ -170,19 +170,23 @@ if (-not $hk.Ok) { $tray.ShowBalloonTip(3000, 'Linuxify', (T 'Ctrl+Alt+L is alre
 # Transparencia: reaplica regras salvas (inicio + janelas novas) se 'Aplicar ao iniciar'
 $tmT = New-Object System.Windows.Forms.Timer; $tmT.Interval = 1500
 $tmT.add_Tick({ try { $c = Get-LxTransp; if ($c.ApplyOnStart -ne $false) { Invoke-LxTranspRules $c }; Invoke-LxTranspManual } catch {} }); $tmT.Start()
-# Watchdog do Zebar: o Zebar 3.3.x crasha sozinho as vezes (ucrtbase 0xc0000005). Se ele estiver no autostart
-# do Linuxify e o GlazeWM estiver rodando, religa. Limite: 5 religadas a cada 10 min (evita loop de crash).
+# Watchdog do Zebar: o Zebar 3.3.1 crasha (ucrtbase 0xc0000005, provider de audio ao trocar fone Bluetooth).
+# Se ele estiver no autostart do Linuxify e o GlazeWM estiver rodando, religa em ~3 s. Nunca desiste:
+# depois de 5 religadas em 10 min, espera cada vez mais entre tentativas (15 s, 30 s, 60 s... ate 5 min).
 $script:zbHist = New-Object System.Collections.ArrayList
-$tmZ = New-Object System.Windows.Forms.Timer; $tmZ.Interval = 10000
+$script:zbNext = [datetime]::MinValue
+$tmZ = New-Object System.Windows.Forms.Timer; $tmZ.Interval = 3000
 $tmZ.add_Tick({ try {
     if (-not (Get-ItemProperty $Run -Name 'Linuxify.Zebar' -ErrorAction SilentlyContinue)) { return }
     if (-not (Get-Process glazewm -ErrorAction SilentlyContinue)) { return }
     if (Get-Process zebar -ErrorAction SilentlyContinue) { return }
-    $now = Get-Date; @($script:zbHist | Where-Object { ($now - $_).TotalMinutes -gt 10 }) | ForEach-Object { [void]$script:zbHist.Remove($_) }
-    if ($script:zbHist.Count -ge 5) { return }
+    $now = Get-Date; if ($now -lt $script:zbNext) { return }
+    @($script:zbHist | Where-Object { ($now - $_).TotalMinutes -gt 10 }) | ForEach-Object { [void]$script:zbHist.Remove($_) }
     $z = "$env:ProgramFiles\glzr.io\Zebar\zebar.exe"
     if (-not (Test-Path $z)) { $c = Get-Command zebar.exe -ErrorAction SilentlyContinue; if ($c) { $z = $c.Source } else { return } }
     Start-Process $z; [void]$script:zbHist.Add($now)
+    $extra = $script:zbHist.Count - 5
+    if ($extra -gt 0) { $script:zbNext = $now.AddSeconds([math]::Min(300, 15 * [math]::Pow(2, $extra - 1))) }
     Add-Content (Join-Path $Data 'watchdog.log') "$($now.ToString('s')) zebar restarted" -ErrorAction SilentlyContinue
 } catch {} }); $tmZ.Start()
 # Reaplica estado salvo no boot (autostart dos apps ja cuida; isto garante coerencia)

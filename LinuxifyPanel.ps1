@@ -382,7 +382,7 @@ $icF = @('Segoe Fluent Icons', 'Segoe MDL2 Assets') | Where-Object { (New-Object
 $fIc = if ($icF) { New-Object System.Drawing.Font($icF, 12) } else { $null }
 $fIcB = if ($icF) { New-Object System.Drawing.Font($icF, 15) } else { $null }
 $Assets = @((Join-Path $PSScriptRoot 'assets'), (Join-Path $Data 'assets')) | Where-Object { Test-Path $_ } | Select-Object -First 1
-$LxVer = 'v0.2.1'
+$LxVer = 'v0.2.2'
 $monoName = @('JetBrainsMono Nerd Font','JetBrains Mono','Cascadia Mono','Consolas') | Where-Object { (New-Object System.Drawing.Font($_, 9)).Name -eq $_ } | Select-Object -First 1
 $fM  = New-Object System.Drawing.Font($monoName, 9)
 
