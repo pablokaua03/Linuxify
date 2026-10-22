@@ -8,11 +8,11 @@ $mutex = New-Object System.Threading.Mutex($false, 'Local\LinuxifyDesktop')
 if (-not $mutex.WaitOne(0)) { return }
 function Get-DeskCfg {
     $d = [pscustomobject]@{ Enabled = $true; Corner = 'BottomRight'; Opacity = 85; Refresh = 45 }
-    if (Test-Path $Cfg) { try { $j = Get-Content $Cfg -Raw | ConvertFrom-Json; foreach ($p in $j.PSObject.Properties) { $d | Add-Member $p.Name $p.Value -Force } } catch {} }
+    if (Test-Path $Cfg) { try { $j = Get-Content $Cfg -Raw | ConvertFrom-Json; foreach ($p in $j.PSObject.Properties) { $d | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value -Force } } catch {} }
     $d
 }
 function Save-DeskCfg($c) { [IO.File]::WriteAllText($Cfg, ($c | ConvertTo-Json), (New-Object System.Text.UTF8Encoding($false))) }
-$cfg = Get-DeskCfg
+$dc0 = Get-DeskCfg
 
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 Add-Type -ReferencedAssemblies System.Windows.Forms, System.Drawing -TypeDefinition @'
@@ -21,7 +21,9 @@ public class LxDeskForm : Form {
   [StructLayout(LayoutKind.Sequential)] struct WINDOWPOS { public IntPtr hwnd, after; public int x, y, cx, cy; public uint flags; }
   [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int cx, int cy, uint f);
   protected override CreateParams CreateParams { get { CreateParams p = base.CreateParams; p.ExStyle |= 0x80 | 0x08000000; return p; } }
+  public LxDeskForm() { DoubleBuffered = true; SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true); }
   protected override bool ShowWithoutActivation { get { return true; } }
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   public void ToBottom() { SetWindowPos(Handle, new IntPtr(1), 0, 0, 0, 0, 0x13); }
   protected override void WndProc(ref Message m) {
     if (m.Msg == 0x46) { WINDOWPOS wp = (WINDOWPOS)Marshal.PtrToStructure(m.LParam, typeof(WINDOWPOS)); wp.after = new IntPtr(1); wp.flags &= ~0x4u; Marshal.StructureToPtr(wp, m.LParam, false); }
@@ -97,51 +99,65 @@ function Convert-Ansi([string]$s) {
     ,$rows
 }
 
+[void][LxDeskForm]::SetProcessDPIAware()
 $font = $null
-foreach ($f in 'JetBrainsMono Nerd Font Mono', 'JetBrainsMono Nerd Font', 'Cascadia Mono', 'Consolas') {
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+foreach ($f in 'JetBrainsMono NFM', 'JetBrainsMono Nerd Font Mono', 'JetBrainsMono NF', 'JetBrainsMono Nerd Font', 'CaskaydiaCove NFM', 'CaskaydiaCove NF', 'CaskaydiaCove Nerd Font', 'Cascadia Mono', 'Consolas') {
     $t = New-Object System.Drawing.Font($f, 9); if ($t.Name -eq $f) { $font = $t; break }
 }
+$symFont = New-Object System.Drawing.Font('Segoe UI Symbol', $font.Size)
 $form = New-Object LxDeskForm
 $form.Text = 'Linuxify Desktop'; $form.FormBorderStyle = 'None'; $form.ShowInTaskbar = $false; $form.TopMost = $false
 $form.StartPosition = 'Manual'; $form.BackColor = $Bg0; $form.Padding = New-Object System.Windows.Forms.Padding(14, 12, 14, 12)
-$form.Opacity = [Math]::Max(0.2, [Math]::Min(1.0, [double]$cfg.Opacity / 100))
-$rt = New-Object System.Windows.Forms.RichTextBox
-$rt.Dock = 'Fill'; $rt.ReadOnly = $true; $rt.BorderStyle = 'None'; $rt.BackColor = $Bg0; $rt.ForeColor = $Fg0
-$rt.Font = $font; $rt.ScrollBars = 'None'; $rt.WordWrap = $false; $rt.Cursor = 'Arrow'; $rt.TabStop = $false
-$form.Controls.Add($rt)
+$form.Opacity = [Math]::Max(0.2, [Math]::Min(1.0, [double]$dc0.Opacity / 100))
+$global:LxGrid = New-Object System.Collections.ArrayList
+$tf = [System.Windows.Forms.TextFormatFlags]::NoPadding -bor [System.Windows.Forms.TextFormatFlags]::NoPrefix
+$global:LxCW = [System.Windows.Forms.TextRenderer]::MeasureText(('M' * 50), $font, (New-Object System.Drawing.Size(9999, 99)), $tf).Width / 50.0
+$global:LxLH = [Math]::Ceiling($font.GetHeight() * 1.05)
+$PadX = 16; $PadY = 14
+$form.add_Paint({
+    $g = $_.Graphics; $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::ClearTypeGridFit
+    for ($r = 0; $r -lt $global:LxGrid.Count; $r++) {
+        $line = $global:LxGrid[$r]; $y = $PadY + $r * $global:LxLH
+        for ($c = 0; $c -lt $line.Count; $c++) {
+            $cell = $line[$c]; $x0 = [int]($PadX + $c * $global:LxCW)
+            if ($cell[2]) { $b = New-Object System.Drawing.SolidBrush($cell[2]); $g.FillRectangle($b, $x0, $y, [int][Math]::Ceiling($global:LxCW), $global:LxLH); $b.Dispose() }
+            if ($cell[0] -eq ' ') { continue }
+            $cp = [int][char]$cell[0][0]; $fnt = if ($cp -ge 0x2800 -and $cp -le 0x28FF) { $symFont } else { $font }
+            [System.Windows.Forms.TextRenderer]::DrawText($g, $cell[0], $fnt, (New-Object System.Drawing.Point($x0, $y)), $cell[1], $tf)
+        }
+    }
+})
 $x = New-Object System.Windows.Forms.Label
 $x.Text = 'x'; $x.AutoSize = $false; $x.Size = '18,18'; $x.TextAlign = 'MiddleCenter'; $x.ForeColor = $Pal[8]; $x.BackColor = $Bg0
 $x.Font = New-Object System.Drawing.Font('Segoe UI', 9); $x.Cursor = 'Hand'
 $form.Controls.Add($x); $x.BringToFront()
 $x.add_MouseEnter({ $x.ForeColor = $Pal[1] }); $x.add_MouseLeave({ $x.ForeColor = $Pal[8] })
 $x.add_Click({ $c = Get-DeskCfg; $c.Enabled = $false; Save-DeskCfg $c; $form.Close() })
-$rt.add_GotFocus({ $form.ToBottom() })
+$form.add_Activated({ $form.ToBottom() })
 
-function Update-Widget {
-    $grid = Convert-Ansi (Get-Fetch)
-    $rt.Clear(); $w = 0
-    for ($r = 0; $r -lt $grid.Count; $r++) {
-        $line = $grid[$r]; if ($line.Count -gt $w) { $w = $line.Count }
-        foreach ($cell in $line) {
-            $rt.SelectionStart = $rt.TextLength; $rt.SelectionColor = $cell[1]
-            $rt.SelectionBackColor = $(if ($cell[2]) { $cell[2] } else { $Bg0 })
-            $rt.AppendText($cell[0])
-        }
-        if ($r -lt $grid.Count - 1) { $rt.AppendText("`n") }
-    }
-    $sz = [System.Windows.Forms.TextRenderer]::MeasureText(('W' * [Math]::Max(10, $w)), $font)
-    $cw = $sz.Width; $lh = $font.GetHeight() + 1
-    $form.ClientSize = New-Object System.Drawing.Size(([int]$cw + 34), ([int]($lh * [Math]::Max(3, $grid.Count)) + 30))
+$global:LxDeskCorner = ''
+function Set-DeskPos {
+    $c = [string](Get-DeskCfg).Corner; $global:LxDeskCorner = $c
     $wa = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea; $m = 24
-    $c = (Get-DeskCfg).Corner
     $px = if ($c -like '*Left') { $wa.Left + $m } else { $wa.Right - $form.Width - $m }
     $py = if ($c -like 'Top*') { $wa.Top + $m + 40 } else { $wa.Bottom - $form.Height - $m }
-    $form.Location = New-Object System.Drawing.Point($px, $py)
+    $form.Location = New-Object System.Drawing.Point($px, $py); $form.ToBottom()
+}
+function Update-Widget {
+    $grid = Convert-Ansi (Get-Fetch)
+    $global:LxGrid = $grid; $w = 0
+    foreach ($ln in $grid) { if ($ln.Count -gt $w) { $w = $ln.Count } }
+    $form.ClientSize = New-Object System.Drawing.Size(([int][Math]::Ceiling($w * $global:LxCW) + 2 * $PadX + 10), ([int]([Math]::Max(3, $grid.Count) * $global:LxLH) + 2 * $PadY))
+    $form.Invalidate()
+    Set-DeskPos
     $x.Location = New-Object System.Drawing.Point(($form.ClientSize.Width - 22), 4)
     $form.ToBottom()
 }
 $form.add_Shown({ Update-Widget })
-$tm = New-Object System.Windows.Forms.Timer; $tm.Interval = [Math]::Max(15, [int]$cfg.Refresh) * 1000
+$tm = New-Object System.Windows.Forms.Timer; $tm.Interval = [Math]::Max(15, [int]$dc0.Refresh) * 1000
 $tm.add_Tick({ if (-not (Get-DeskCfg).Enabled) { $form.Close(); return }; Update-Widget }); $tm.Start()
+$tw = New-Object System.Windows.Forms.Timer; $tw.Interval = 1500
+$tw.add_Tick({ $c = Get-DeskCfg; if (-not $c.Enabled) { $form.Close(); return }; if ([string]$c.Corner -ne $global:LxDeskCorner) { Set-DeskPos } }); $tw.Start()
 [System.Windows.Forms.Application]::Run($form)
 $mutex.ReleaseMutex()

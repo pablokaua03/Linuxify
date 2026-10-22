@@ -152,7 +152,7 @@ $tray.Visible = $true
 if (-not $hk.Ok) { $tray.ShowBalloonTip(3000, 'Linuxify', 'Ctrl+Alt+L ja esta em uso; use o icone.', 'Warning') }
 # Transparencia: reaplica regras salvas (inicio + janelas novas) se 'Aplicar ao iniciar'
 $tmT = New-Object System.Windows.Forms.Timer; $tmT.Interval = 1500
-$tmT.add_Tick({ try { $c = Get-LxTransp; if ($c.ApplyOnStart) { Invoke-LxTranspRules $c }; Invoke-LxTranspManual } catch {} }); $tmT.Start()
+$tmT.add_Tick({ try { $c = Get-LxTransp; if ($c.ApplyOnStart -ne $false) { Invoke-LxTranspRules $c }; Invoke-LxTranspManual } catch {} }); $tmT.Start()
 # Reaplica estado salvo no boot (autostart dos apps ja cuida; isto garante coerencia)
 function Start-LxDesktop { $dc = Join-Path $Data 'desktop.json'; if ((Test-Path $dc) -and ((Get-Content $dc -Raw | ConvertFrom-Json).Enabled)) { Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Data\LinuxifyDesktop.ps1`"" } }
 try { Start-LxDesktop } catch {}
