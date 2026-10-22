@@ -106,12 +106,14 @@ function New-StateIcon([bool]$On) {
     $col = if ($On) { [System.Drawing.Color]::FromArgb(203, 166, 247) } else { [System.Drawing.Color]::FromArgb(108, 112, 134) }
     $g.Dispose(); $bmp.Dispose()
     $sz = [System.Windows.Forms.SystemInformation]::SmallIconSize.Width; if ($sz -lt 16) { $sz = 16 }
-    $pn = if ($sz -le 16) { 'logo-16.png' } elseif ($sz -le 24) { 'logo-24.png' } else { 'logo-32.png' }
-    $png = @((Join-Path $Data "assets\$pn"), (Join-Path $(if ($PSScriptRoot) { $PSScriptRoot } else { $Data }) "assets\$pn")) | Where-Object { Test-Path $_ } | Select-Object -First 1
-    if ($png) {
-        $src = [System.Drawing.Image]::FromFile($png); $bmp = New-Object System.Drawing.Bitmap $sz, $sz; $g = [System.Drawing.Graphics]::FromImage($bmp)
+    # penguin logo: multi-size assets\linuxify.ico (16/20/24/32/48...), picked at the tray's real size
+    $ico = @((Join-Path $Data 'assets\linuxify.ico'), (Join-Path $(if ($PSScriptRoot) { $PSScriptRoot } else { $Data }) 'assets\linuxify.ico')) | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($ico) {
+        $ic = New-Object System.Drawing.Icon($ico, $sz, $sz)
+        if ($On) { return $ic }
+        $src = $ic.ToBitmap(); $ic.Dispose(); $bmp = New-Object System.Drawing.Bitmap $sz, $sz; $g = [System.Drawing.Graphics]::FromImage($bmp)
         $g.InterpolationMode = 'HighQualityBicubic'; $ia = New-Object System.Drawing.Imaging.ImageAttributes
-        if (-not $On) { $m = New-Object System.Drawing.Imaging.ColorMatrix(,[single[][]]@(@(0.3,0.3,0.3,0,0), @(0.59,0.59,0.59,0,0), @(0.11,0.11,0.11,0,0), @(0,0,0,0.85,0), @(0,0,0,0,1))); $ia.SetColorMatrix($m) }
+        $m = New-Object System.Drawing.Imaging.ColorMatrix(,[single[][]]@(@(0.3,0.3,0.3,0,0), @(0.59,0.59,0.59,0,0), @(0.11,0.11,0.11,0,0), @(0,0,0,0.85,0), @(0,0,0,0,1))); $ia.SetColorMatrix($m)
         $g.DrawImage($src, (New-Object System.Drawing.Rectangle 0, 0, $sz, $sz), 0, 0, $src.Width, $src.Height, 'Pixel', $ia); $g.Dispose(); $src.Dispose()
         return [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
     }
