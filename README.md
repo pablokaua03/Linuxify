@@ -9,6 +9,7 @@ Linuxify is a small tray app plus a settings panel that glues together
 
 ![Panel - General](docs/panel-geral.png)
 ![Panel - Terminal](docs/panel-term.png)
+![Desktop widget](docs/desktop-widget.png)
 
 ## Features
 
@@ -24,7 +25,7 @@ Linuxify is a small tray app plus a settings panel that glues together
 
 ## Install
 
-1. Download `Linuxify-vX.Y.Z.zip` from [Releases](../../releases) and extract it.
+1. Download `Linuxify-vX.Y.Z.zip` from [Releases](../../releases) and extract it (the zip includes `Linuxify.exe`, the tray compiled with ps2exe; without it the tray runs from `Linuxify.ps1`).
 2. Double-click **`Install.cmd`**.
 3. Answer the prompt to install the dependencies with winget (GlazeWM, Zebar, Windhawk, fastfetch, Starship, optional JetBrainsMono Nerd Font).
 

@@ -108,11 +108,11 @@ if (Test-Path $wt) {
         $scheme = Get-Content (Join-Path $C 'terminal\catppuccin-mocha.json') -Raw | ConvertFrom-Json
         $glob   = Get-Content (Join-Path $C 'terminal\global.json') -Raw | ConvertFrom-Json
         $defs   = Get-Content (Join-Path $C 'terminal\profile-defaults.json') -Raw | ConvertFrom-Json
-        if (-not $o.PSObject.Properties['schemes']) { $o | Add-Member schemes @() }
+        if (-not $o.PSObject.Properties['schemes']) { $o | Add-Member -NotePropertyName schemes -NotePropertyValue @() }
         $o.schemes = @(@($o.schemes | Where-Object { $_.name -ne $scheme.name }) + $scheme)
-        foreach ($p in $glob.PSObject.Properties) { $o | Add-Member $p.Name $p.Value -Force }
-        if (-not $o.profiles.PSObject.Properties['defaults']) { $o.profiles | Add-Member defaults ([pscustomobject]@{}) }
-        foreach ($p in $defs.PSObject.Properties) { $o.profiles.defaults | Add-Member $p.Name $p.Value -Force }
+        foreach ($p in $glob.PSObject.Properties) { $o | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value -Force }
+        if (-not $o.profiles.PSObject.Properties['defaults']) { $o.profiles | Add-Member -NotePropertyName defaults -NotePropertyValue ([pscustomobject]@{}) }
+        foreach ($p in $defs.PSObject.Properties) { $o.profiles.defaults | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value -Force }
         [IO.File]::WriteAllText((Join-Path $Data 'wt.settings.linux.json'), ($o | ConvertTo-Json -Depth 32), $Utf8)
     } catch { Say "Windows Terminal theme skipped: $_" 'Yellow' }
 } else { Say 'Windows Terminal settings not found; theme skipped.' 'Yellow' }

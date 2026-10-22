@@ -70,7 +70,7 @@ public static class LxAlpha {
 '@
 }
 function Get-LxTransp {
-    $d = [pscustomobject]@{ ApplyOnStart = $false; Rules = @() }
+    $d = [pscustomobject]@{ ApplyOnStart = $true; Rules = @() }
     if (Test-Path $LxTranspFile) { try { $j = [IO.File]::ReadAllText($LxTranspFile) | ConvertFrom-Json; if ($j) { $d.ApplyOnStart = [bool]$j.ApplyOnStart; $d.Rules = @($j.Rules | Where-Object { $_.Process }) } } catch {} }
     $d
 }

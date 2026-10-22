@@ -291,7 +291,7 @@ $l = New-Lbl 'Instalar/Desinstalar usa o winget (abre uma janela pra voce acompa
 $cbBoot = New-Object System.Windows.Forms.CheckBox; $cbBoot.Text = 'Iniciar com o Windows'; $cbBoot.AutoSize = $true; $cbBoot.Location = '22,456'; $cbBoot.ForeColor = $cText; $pg.Controls.Add($cbBoot)
 $cbBoot.add_Click({ & powershell -NoProfile -ExecutionPolicy Bypass -File $Tray -Action $(if ($cbBoot.Checked) { 'TrayAutostartOn' } else { 'TrayAutostartOff' }) })
 $DeskCfg = Join-Path $Data 'desktop.json'
-function Get-DeskSet { $d = [pscustomobject]@{ Enabled = $false; Corner = 'BottomRight'; Opacity = 85; Refresh = 45 }; if (Test-Path $DeskCfg) { try { $j = Get-Content $DeskCfg -Raw | ConvertFrom-Json; foreach ($p in $j.PSObject.Properties) { $d | Add-Member $p.Name $p.Value -Force } } catch {} }; $d }
+function Get-DeskSet { $d = [pscustomobject]@{ Enabled = $false; Corner = 'BottomRight'; Opacity = 85; Refresh = 45 }; if (Test-Path $DeskCfg) { try { $j = Get-Content $DeskCfg -Raw | ConvertFrom-Json; foreach ($p in $j.PSObject.Properties) { $d | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value -Force } } catch {} }; $d }
 function Save-DeskSet($c) { [IO.File]::WriteAllText($DeskCfg, ($c | ConvertTo-Json), (New-Object System.Text.UTF8Encoding($false))) }
 function Stop-Desk { Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object CommandLine -like '*LinuxifyDesktop.ps1*' | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } }
 function Start-Desk { Stop-Desk; Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Data\LinuxifyDesktop.ps1`"" }
@@ -300,7 +300,7 @@ $cbCorner = New-Object System.Windows.Forms.ComboBox; $cbCorner.DropDownStyle = 
 [void]$cbCorner.Items.AddRange([object[]]@('BottomRight', 'BottomLeft', 'TopRight', 'TopLeft')); $pg.Controls.Add($cbCorner)
 $ds0 = Get-DeskSet; $cbDesk.Checked = [bool]$ds0.Enabled; $cbCorner.SelectedItem = [string]$ds0.Corner; if ($cbCorner.SelectedIndex -lt 0) { $cbCorner.SelectedIndex = 0 }
 $cbDesk.add_Click({ $c = Get-DeskSet; $c.Enabled = $cbDesk.Checked; Save-DeskSet $c; if ($cbDesk.Checked) { Start-Desk } else { Stop-Desk } })
-$cbCorner.add_SelectedIndexChanged({ $c = Get-DeskSet; if ($c.Corner -ne [string]$cbCorner.SelectedItem) { $c.Corner = [string]$cbCorner.SelectedItem; Save-DeskSet $c; if ($c.Enabled) { Start-Desk } } })
+$cbCorner.add_SelectedIndexChanged({ $c = Get-DeskSet; if ($c.Corner -ne [string]$cbCorner.SelectedItem) { $c.Corner = [string]$cbCorner.SelectedItem; Save-DeskSet $c } })
 $bAll = New-Btn 'Desinstalar tudo...' 'dg'; $bAll.Location = '20,590'; $pg.Controls.Add($bAll)
 $bAll.add_Click({ if ([System.Windows.Forms.MessageBox]::Show('Desfazer tudo e restaurar as configs originais?', 'Linuxify', 'YesNo', 'Warning') -eq 'Yes') { Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$Data\uninstall.ps1`" -Force"; $form.Close() } })
 $bDir = New-Btn 'Abrir pasta'; $bDir.AutoSize = $false; $bDir.SetBounds(400, 590, 180, 32); $pg.Controls.Add($bDir)
@@ -445,11 +445,20 @@ $bRule.add_Click({
 })
 $bOne = New-Btn 'Restaurar'; $bOne.AutoSize = $false; $bOne.SetBounds(214, 100, 140, 40); $ca.Controls.Add($bOne)
 $bOne.add_Click({ if ($script:tSel) { [LxAlpha]::Restore($script:tSel.Handle); $script:tMute = $true; $trT.Value = 100; $script:tMute = $false; $lT.Text = '100%'; Fill-Transp } })
-$lR = New-Lbl '' $fS $cOv; $lR.AutoSize = $false; $lR.SetBounds(20, 500, 560, 40); $pa.Controls.Add($lR)
+$l = New-Lbl 'Regras salvas (por app):' $fS $cOv; $l.Location = '20,498'; $pa.Controls.Add($l)
+$cbR = New-Object System.Windows.Forms.ComboBox; $cbR.DropDownStyle = 'DropDownList'; $cbR.FlatStyle = 'Flat'; $cbR.SetBounds(180, 495, 170, 24); $pa.Controls.Add($cbR)
+$bREd = New-Btn 'Usar % atual'; $bREd.AutoSize = $false; $bREd.SetBounds(358, 492, 110, 30); $pa.Controls.Add($bREd)
+$bRDel = New-Btn 'Remover' 'dg'; $bRDel.AutoSize = $false; $bRDel.SetBounds(474, 492, 106, 30); $pa.Controls.Add($bRDel)
 function Fill-Rules {
-    $lR.Text = if ($script:tcfg.Rules) { 'Regras salvas: ' + (($script:tcfg.Rules | ForEach-Object { "$($_.Process) $($_.Opacity)%" }) -join ', ') + '   (Restaurar todas remove as regras)' } else { 'Nenhuma regra salva.' }
+    $cbR.Items.Clear(); foreach ($r in @($script:tcfg.Rules)) { [void]$cbR.Items.Add("$($r.Process)  $($r.Opacity)%") }
+    if ($cbR.Items.Count) { $cbR.SelectedIndex = 0; $cbR.Enabled = $true } else { [void]$cbR.Items.Add('(nenhuma)'); $cbR.SelectedIndex = 0; $cbR.Enabled = $false }
+    $bREd.Enabled = $cbR.Enabled; $bRDel.Enabled = $cbR.Enabled
 }
-$cbTS = New-Object System.Windows.Forms.CheckBox; $cbTS.Text = 'Aplicar ao iniciar (tray reaplica nas janelas novas)'; $cbTS.AutoSize = $true; $cbTS.Location = '22,546'; $cbTS.ForeColor = $cText; $cbTS.Checked = $script:tcfg.ApplyOnStart; $pa.Controls.Add($cbTS)
+function Get-SelRule { if (-not $cbR.Enabled -or $cbR.SelectedIndex -lt 0) { return $null }; @($script:tcfg.Rules)[$cbR.SelectedIndex] }
+$cbR.add_SelectedIndexChanged({ $r = Get-SelRule; if ($r) { $script:tMute = $true; $trT.Value = [Math]::Max(20, [Math]::Min(100, [int]$r.Opacity)); $script:tMute = $false; $lT.Text = "$($trT.Value)%" } })
+$bREd.add_Click({ $r = Get-SelRule; if (-not $r) { return }; $r.Opacity = $trT.Value; Save-LxTransp $script:tcfg; Fill-Rules; foreach ($w in [LxAlpha]::List()) { if ($w.Proc -ieq $r.Process) { if ($r.Opacity -ge 100) { [LxAlpha]::Restore($w.Handle) } else { [void][LxAlpha]::Set($w.Handle, [int]$r.Opacity) } } }; Fill-Transp })
+$bRDel.add_Click({ $r = Get-SelRule; if (-not $r) { return }; $script:tcfg.Rules = @($script:tcfg.Rules | Where-Object { $_.Process -ine $r.Process }); Save-LxTransp $script:tcfg; foreach ($w in [LxAlpha]::List()) { if ($w.Proc -ieq $r.Process -and [LxAlpha]::Get($w.Handle) -ge 0) { [LxAlpha]::Restore($w.Handle) } }; Fill-Rules; Fill-Transp })
+$cbTS = New-Object System.Windows.Forms.CheckBox; $cbTS.Text = 'Aplicar regras automaticamente (janelas novas e reabertas)'; $cbTS.AutoSize = $true; $cbTS.Location = '22,546'; $cbTS.ForeColor = $cText; $cbTS.Checked = $script:tcfg.ApplyOnStart; $pa.Controls.Add($cbTS)
 $cbTS.add_CheckedChanged({ $script:tcfg.ApplyOnStart = $cbTS.Checked; Save-LxTransp $script:tcfg })
 $bAct = New-Btn '+ Janela ativa'; $bAct.AutoSize = $false; $bAct.SetBounds(20, 584, 190, 40); $pa.Controls.Add($bAct)
 $bAct.add_Click({
@@ -460,17 +469,6 @@ $bAct.add_Click({
     $form.Activate()
 })
 $bTRel = New-Btn 'Recarregar'; $bTRel.AutoSize = $false; $bTRel.SetBounds(218, 584, 140, 40); $pa.Controls.Add($bTRel); $bTRel.add_Click({ Fill-Transp })
-$DeskCfg = Join-Path $Data 'desktop.json'
-function Get-DeskSet { $d = [pscustomobject]@{ Enabled = $false; Corner = 'BottomRight'; Opacity = 85; Refresh = 45 }; if (Test-Path $DeskCfg) { try { $j = Get-Content $DeskCfg -Raw | ConvertFrom-Json; foreach ($p in $j.PSObject.Properties) { $d | Add-Member $p.Name $p.Value -Force } } catch {} }; $d }
-function Save-DeskSet($c) { [IO.File]::WriteAllText($DeskCfg, ($c | ConvertTo-Json), (New-Object System.Text.UTF8Encoding($false))) }
-function Stop-Desk { Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object CommandLine -like '*LinuxifyDesktop.ps1*' | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } }
-function Start-Desk { Stop-Desk; Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Data\LinuxifyDesktop.ps1`"" }
-$cbDesk = New-Object System.Windows.Forms.CheckBox; $cbDesk.Text = 'Terminal na area de trabalho'; $cbDesk.AutoSize = $true; $cbDesk.Location = '22,484'; $cbDesk.ForeColor = $cText; $pg.Controls.Add($cbDesk)
-$cbCorner = New-Object System.Windows.Forms.ComboBox; $cbCorner.DropDownStyle = 'DropDownList'; $cbCorner.FlatStyle = 'Flat'; $cbCorner.SetBounds(260, 482, 140, 24)
-[void]$cbCorner.Items.AddRange([object[]]@('BottomRight', 'BottomLeft', 'TopRight', 'TopLeft')); $pg.Controls.Add($cbCorner)
-$ds0 = Get-DeskSet; $cbDesk.Checked = [bool]$ds0.Enabled; $cbCorner.SelectedItem = [string]$ds0.Corner; if ($cbCorner.SelectedIndex -lt 0) { $cbCorner.SelectedIndex = 0 }
-$cbDesk.add_Click({ $c = Get-DeskSet; $c.Enabled = $cbDesk.Checked; Save-DeskSet $c; if ($cbDesk.Checked) { Start-Desk } else { Stop-Desk } })
-$cbCorner.add_SelectedIndexChanged({ $c = Get-DeskSet; if ($c.Corner -ne [string]$cbCorner.SelectedItem) { $c.Corner = [string]$cbCorner.SelectedItem; Save-DeskSet $c; if ($c.Enabled) { Start-Desk } } })
 $bAll = New-Btn 'Restaurar todas' 'dg'; $bAll.AutoSize = $false; $bAll.SetBounds(400, 584, 180, 40); $pa.Controls.Add($bAll)
 $bAll.add_Click({
     foreach ($w in [LxAlpha]::List()) { if ([LxAlpha]::Get($w.Handle) -ge 0) { [LxAlpha]::Restore($w.Handle) } }
