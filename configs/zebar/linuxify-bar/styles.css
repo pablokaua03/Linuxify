@@ -1,0 +1,11 @@
+:root{--base:#1e1e2e;--mantle:#181825;--surface0:#313244;--surface1:#45475a;--text:#cdd6f4;--sub:#a6adc8;--mauve:#cba6f7;--blue:#89b4fa;--green:#a6e3a1;--peach:#fab387}
+*{box-sizing:border-box;margin:0;user-select:none}
+html,body{background:transparent;height:100%;font:13px "JetBrainsMono Nerd Font",monospace;color:var(--text)}
+.bar{height:100%;margin:6px 8px 0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 8px;background:rgba(30,30,46,.82);border:1px solid rgba(203,166,247,.18);border-radius:12px;backdrop-filter:blur(12px);height:32px}
+.left{display:flex;gap:4px}.right{display:flex;gap:6px;justify-content:flex-end}
+.ws{border:0;background:transparent;color:var(--sub);font:inherit;min-width:24px;height:22px;border-radius:7px;cursor:pointer;transition:all .15s}
+.ws:hover{background:var(--surface0)}.ws.shown{color:var(--text)}
+.ws.focused{background:var(--mauve);color:var(--base);font-weight:700;min-width:34px}
+.center{font-weight:600;color:var(--text)}
+.pill{padding:2px 8px;border-radius:7px;background:rgba(49,50,68,.7);color:var(--sub)}
+#cpu{color:var(--blue)}#mem{color:var(--green)}#bat{color:var(--peach)}#vol{color:var(--mauve)}

@@ -1,0 +1,4 @@
+{
+  "$schema": "https://github.com/glzr-io/zebar/raw/v2.x/resources/settings-schema.json",
+  "startupConfigs": [{ "pack": "linuxify-bar", "widget": "bar", "preset": "default" }]
+}

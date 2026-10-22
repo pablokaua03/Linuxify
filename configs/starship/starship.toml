@@ -1,0 +1,77 @@
+# Linuxify - pill/powerline prompt (Catppuccin Mocha)
+add_newline = true
+format = """
+[](mauve)$shell[](fg:mauve bg:blue)$directory[](fg:blue bg:peach)$git_branch$git_status[](fg:peach bg:teal)$cmd_duration[](teal)
+[╰─>](bold mauve) """
+right_format = """[](yellow)$battery[](fg:yellow bg:lavender)$time[](lavender)"""
+palette = "catppuccin_mocha"
+
+[shell]
+disabled = false
+format = "[ $indicator ]($style)"
+style = "bg:mauve fg:crust bold"
+powershell_indicator = " pwsh"
+cmd_indicator = " cmd"
+unknown_indicator = " sh"
+
+[directory]
+format = "[ 󰉋 $path$read_only ]($style)"
+style = "bg:blue fg:crust bold"
+truncation_length = 3
+truncation_symbol = "…/"
+home_symbol = " ~"
+read_only = " "
+
+[git_branch]
+format = "[ $symbol$branch ]($style)"
+symbol = " "
+style = "bg:peach fg:crust"
+
+[git_status]
+format = "[($all_status$ahead_behind )]($style)"
+style = "bg:peach fg:crust"
+
+[cmd_duration]
+min_time = 0
+show_milliseconds = true
+format = "[ 󱦟 $duration ]($style)"
+style = "bg:teal fg:crust"
+
+[battery]
+format = "[ $symbol$percentage ]($style)"
+full_symbol = "󰁹 "
+charging_symbol = "󰂄 "
+discharging_symbol = "󰂃 "
+unknown_symbol = "󰁹 "
+empty_symbol = "󰂎 "
+[[battery.display]]
+threshold = 100
+style = "bg:yellow fg:crust"
+
+[time]
+disabled = false
+format = "[  $time ]($style)"
+time_format = "%H:%M:%S"
+style = "bg:lavender fg:crust"
+
+[character]
+disabled = true
+
+[palettes.catppuccin_mocha]
+rosewater = "#f5e0dc"
+pink = "#f5c2e7"
+mauve = "#cba6f7"
+red = "#f38ba8"
+peach = "#fab387"
+yellow = "#f9e2af"
+green = "#a6e3a1"
+teal = "#94e2d5"
+sky = "#89dceb"
+blue = "#89b4fa"
+lavender = "#b4befe"
+text = "#cdd6f4"
+subtext0 = "#a6adc8"
+overlay1 = "#7f849c"
+surface0 = "#313244"
+base = "#1e1e2e"
+crust = "#11111b"
