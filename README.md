@@ -51,7 +51,7 @@ Everything Linuxify changes is backed up first, and *Linux mode* can be turned o
 2. Double-click **`Install.cmd`**.
 3. Answer **y** to install/update the dependencies with winget (GlazeWM, Zebar, Windhawk, fastfetch, Starship and the optional Nerd Font).
 
-The installer copies Linuxify to `%LOCALAPPDATA%\Linuxify`, backs up your existing configs, writes the Linuxify configs, adds the tray to startup (`HKCU\...\Run`) and starts it.
+The installer copies Linuxify to `%LOCALAPPDATA%\Linuxify`, backs up your existing configs, writes the Linuxify configs, adds the tray to startup (`HKCU\...\Run`, with `-Boot` so it waits for the taskbar) and starts it.
 
 Command-line options: `install.ps1 -Yes` (no questions), `-NoDeps` (skip winget), `-NoStart` (don't start the tray).
 
@@ -95,9 +95,17 @@ Double-click **`Uninstall.cmd`** (or tray > *Uninstall everything...*). It turns
 ## Troubleshooting
 
 - **Ctrl+Alt+L does nothing** — another app is using the shortcut; use the tray icon instead.
+- **No tray icon after sign-in** — startup waits up to about a minute for Explorer and the notification area, then retries the icon. Details are in `%LOCALAPPDATA%\Linuxify\startup.log`. If an older install is still using the previous startup command, turn *Start with Windows* off and on once (the next launch also rewrites it). Restarting Explorer brings the icon back.
 - **A game or app gets tiled** — add it in *Exceptions*, or add the process name to the games rule.
 - **Icons look like squares in the terminal** — install a Nerd Font and select it in the *Terminal* tab.
 - **No glass effect** — requires Windows 11 (or Windows 10 1803+ for blur) and transparency effects enabled in Windows settings; you can also turn it off in *General*.
+
+## Changelog
+
+### v0.2.3
+- At sign-in the tray waits until Explorer and the notification area are ready (`-Boot` on the startup command) before showing the icon. If creating the icon fails, it tries again and writes the error, with a timestamp, to `%LOCALAPPDATA%\Linuxify\startup.log`.
+- If Explorer restarts, the tray icon is shown again.
+- *Start with Windows* (installer, panel and tray menu) writes the new startup command. An existing install is updated the next time the tray starts.
 
 ## Credits
 
