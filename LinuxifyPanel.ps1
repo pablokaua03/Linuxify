@@ -382,7 +382,7 @@ $icF = @('Segoe Fluent Icons', 'Segoe MDL2 Assets') | Where-Object { (New-Object
 $fIc = if ($icF) { New-Object System.Drawing.Font($icF, 12) } else { $null }
 $fIcB = if ($icF) { New-Object System.Drawing.Font($icF, 15) } else { $null }
 $Assets = @((Join-Path $PSScriptRoot 'assets'), (Join-Path $Data 'assets')) | Where-Object { Test-Path $_ } | Select-Object -First 1
-$LxVer = 'v0.2.2'
+$LxVer = 'v0.2.3'
 $monoName = @('JetBrainsMono Nerd Font','JetBrains Mono','Cascadia Mono','Consolas') | Where-Object { (New-Object System.Drawing.Font($_, 9)).Name -eq $_ } | Select-Object -First 1
 $fM  = New-Object System.Drawing.Font($monoName, 9)
 
@@ -467,6 +467,7 @@ $cbLang.add_SelectedIndexChanged({
     $self = Join-Path $Data 'LinuxifyPanel.ps1'; if (-not (Test-Path $self)) { $self = $PSCommandPath }
     Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -STA -ExecutionPolicy Bypass -File `"$self`" -Tab geral"; $form.Close()
 })
+# TrayAutostartOn rewrites the Run entry with -Boot; Off removes it.
 $cbBoot.add_Click({ & powershell -NoProfile -ExecutionPolicy Bypass -File $Tray -Action $(if ($cbBoot.Checked) { 'TrayAutostartOn' } else { 'TrayAutostartOff' }) })
 $DeskCfg = Join-Path $Data 'desktop.json'
 function Get-DeskSet { $d = [pscustomobject]@{ Enabled = $false; Corner = 'BottomRight'; Opacity = 85; Refresh = 45; Scale = 100 }; if (Test-Path $DeskCfg) { try { $j = Get-Content $DeskCfg -Raw | ConvertFrom-Json; foreach ($p in $j.PSObject.Properties) { $d | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value -Force } } catch {} }; $d }

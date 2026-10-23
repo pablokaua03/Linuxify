@@ -123,7 +123,8 @@ if (Test-Path $wt) {
 
 Say (T 'Windhawk: import configs\windhawk\windows-11-taskbar-styler.json in the "Windows 11 Taskbar Styler" mod settings (optional).') 'DarkGray'
 
-# 5. startup + tray
+# 5. startup + tray. TrayAutostartOn writes HKCU Run\Linuxify with -Boot
+#    (wait for Explorer and the notification area before creating the icon).
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Data 'Linuxify.ps1') -Action TrayAutostartOn
 Say (T 'Startup registered (HKCU Run: Linuxify)')
 if (-not $NoStart) {
