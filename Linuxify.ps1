@@ -1,9 +1,13 @@
 <#
 .SYNOPSIS Tray "Linuxify": liga/desliga o modo Linux. Ctrl+Alt+L alterna.
-  Sem parametro = abre o tray. -Action On|Off|Toggle|TrayAutostartOn|TrayAutostartOff = executa e sai.
+  Sem parametro = abre o tray. -Boot = espera o Explorer e a area de notificacao (entrada do Run no logon).
+  -Action On|Off|Toggle|TrayAutostartOn|TrayAutostartOff = executa e sai.
 #>
 [CmdletBinding()]
-param([ValidateSet('', 'On', 'Off', 'Toggle', 'TrayAutostartOn', 'TrayAutostartOff')][string]$Action = '')
+param(
+    [ValidateSet('', 'On', 'Off', 'Toggle', 'TrayAutostartOn', 'TrayAutostartOff')][string]$Action = '',
+    [switch]$Boot
+)
 $Data  = Join-Path $env:LOCALAPPDATA 'Linuxify'
 $State = Join-Path $Data 'state.txt'
 $Run   = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
@@ -67,9 +71,54 @@ function Disable-Linux {
     # (Windhawk sempre ligado, sem restart do explorer)
     Set-Content $State 'off'
 }
+function Get-TrayLaunchCommand {
+    $exe = Join-Path $Data 'Linuxify.exe'
+    # -Boot waits for Explorer and Shell_TrayWnd before the icon is created.
+    if (Test-Path $exe) { return "`"$exe`" -Boot" }
+    return "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -STA -File `"$Data\Linuxify.ps1`" -Boot"
+}
 function Set-TrayAutostart([bool]$On) {
-    if ($On) { $exe = Join-Path $Data 'Linuxify.exe'; if (Test-Path $exe) { Set-ItemProperty $Run 'Linuxify' "`"$exe`""; return }; Set-ItemProperty $Run 'Linuxify' "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -STA -File `"$Data\Linuxify.ps1`"" }
+    if ($On) { Set-ItemProperty $Run 'Linuxify' (Get-TrayLaunchCommand) }
     else { Remove-ItemProperty $Run 'Linuxify' -ErrorAction SilentlyContinue }
+}
+function Update-TrayBootArg {
+    # Existing installs keep the old Run command until the tray (or the toggle) runs again.
+    $cur = (Get-ItemProperty $Run -Name 'Linuxify' -ErrorAction SilentlyContinue).Linuxify
+    if (-not $cur) { return }
+    if ([string]$cur -match '(^|\s)-Boot(\s|$)') { return }
+    Set-TrayAutostart $true
+}
+function Write-LxStartup([string]$Message) {
+    try { Add-Content (Join-Path $Data 'startup.log') ("{0} {1}" -f (Get-Date).ToString('s'), $Message) -ErrorAction Stop } catch {}
+}
+function Add-LxBootType {
+    if ('LxBoot' -as [type]) { return }
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class LxBoot {
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern IntPtr FindWindow(string lpClassName, IntPtr lpWindowName);
+}
+'@
+}
+function Test-ExplorerTrayReady {
+    if (-not (Get-Process -Name explorer -ErrorAction SilentlyContinue)) { return $false }
+    Add-LxBootType
+    $hwnd = [LxBoot]::FindWindow('Shell_TrayWnd', [IntPtr]::Zero)
+    return ($hwnd -ne [IntPtr]::Zero)
+}
+function Wait-ExplorerTray {
+    # Poll until explorer.exe is up and the taskbar window exists, then a short extra delay
+    # so the notification area can finish creating. Give up after ~60s and try anyway.
+    $ready = $false
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while ($sw.Elapsed.TotalSeconds -lt 60) {
+        if (Test-ExplorerTrayReady) { $ready = $true; break }
+        Start-Sleep -Milliseconds 500
+    }
+    if (-not $ready) { Write-LxStartup 'boot wait timed out before explorer.exe and Shell_TrayWnd were both ready' }
+    Start-Sleep -Seconds 2
 }
 
 New-Item -ItemType Directory -Force $Data | Out-Null
@@ -83,17 +132,35 @@ switch ($Action) {
 
 # ---- Tray ----
 $mutex = New-Object System.Threading.Mutex($false, 'Local\LinuxifyTray')
-if (-not $mutex.WaitOne(0)) { return }
-Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-Add-Type -ReferencedAssemblies System.Windows.Forms -TypeDefinition @'
+if (-not $mutex.WaitOne(0)) { $mutex.Dispose(); return }
+$tray = $null
+$hk = $null
+try {
+    try { Update-TrayBootArg } catch { Write-LxStartup ("could not refresh startup command: {0}" -f $_.Exception.Message) }
+    # -Boot is what the Run entry passes. Also wait when the shell is not up yet, so an
+    # older startup command (no -Boot) still survives the logon that migrates it.
+    if ($Boot -or -not (Test-ExplorerTrayReady)) { Wait-ExplorerTray }
+    Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+    Add-Type -ReferencedAssemblies System.Windows.Forms -TypeDefinition @'
 using System; using System.Runtime.InteropServices; using System.Windows.Forms;
 public class HotkeyWindow : NativeWindow, IDisposable {
   [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr h, int id, uint mod, uint vk);
   [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr h, int id);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern uint RegisterWindowMessage(string lpString);
   public event EventHandler Pressed;
+  public event EventHandler TaskbarCreated;
   public bool Ok;
-  public HotkeyWindow(uint mod, uint vk) { CreateHandle(new CreateParams()); Ok = RegisterHotKey(Handle, 1, mod, vk); }
-  protected override void WndProc(ref Message m) { if (m.Msg == 0x0312 && Pressed != null) Pressed(this, EventArgs.Empty); base.WndProc(ref m); }
+  uint taskbarMsg;
+  public HotkeyWindow(uint mod, uint vk) {
+    CreateHandle(new CreateParams());
+    Ok = RegisterHotKey(Handle, 1, mod, vk);
+    taskbarMsg = RegisterWindowMessage("TaskbarCreated");
+  }
+  protected override void WndProc(ref Message m) {
+    if (m.Msg == 0x0312 && Pressed != null) Pressed(this, EventArgs.Empty);
+    if (taskbarMsg != 0 && m.Msg == (int)taskbarMsg && TaskbarCreated != null) TaskbarCreated(this, EventArgs.Empty);
+    base.WndProc(ref m);
+  }
   public void Dispose() { UnregisterHotKey(Handle, 1); DestroyHandle(); }
 }
 '@
@@ -120,7 +187,21 @@ function New-StateIcon([bool]$On) {
     $bmp = [LxAlpha]::Logo(16, $col); [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
 }
 
-$tray = New-Object System.Windows.Forms.NotifyIcon
+# NotifyIcon (and Visible) fails while the notification area is still coming up. Try a few times.
+for ($notifyTry = 1; $notifyTry -le 3; $notifyTry++) {
+    try {
+        $tray = New-Object System.Windows.Forms.NotifyIcon
+        $tray.Text = 'Linuxify'
+        $tray.Visible = $true
+        if ($notifyTry -gt 1) { Write-LxStartup ("NotifyIcon ready on attempt {0}/3" -f $notifyTry) }
+        break
+    } catch {
+        Write-LxStartup ("NotifyIcon attempt {0}/3 failed: {1}" -f $notifyTry, $_.Exception.Message)
+        if ($tray) { try { $tray.Visible = $false; $tray.Dispose() } catch {} ; $tray = $null }
+        if ($notifyTry -ge 3) { throw }
+        Start-Sleep -Seconds 2
+    }
+}
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
 $miPanel = $menu.Items.Add('')
 $miPanel.Font = New-Object System.Drawing.Font($miPanel.Font, [System.Drawing.FontStyle]::Bold)
@@ -164,6 +245,11 @@ $tray.add_MouseClick({ if ($_.Button -eq 'Left') { Switch-Mode } })
 
 $hk = New-Object HotkeyWindow ([uint32](0x0001 -bor 0x0002 -bor 0x4000), [uint32]0x4C)  # Alt|Ctrl|NoRepeat + L
 $hk.add_Pressed({ Switch-Mode })
+# Explorer broadcasts TaskbarCreated when it restarts; the old icon is gone until we show it again.
+$hk.add_TaskbarCreated({
+    try { $tray.Visible = $false; $tray.Visible = $true }
+    catch { Write-LxStartup ("taskbar created, icon refresh failed: {0}" -f $_.Exception.Message) }
+})
 Update-Ui
 $tray.Visible = $true
 if (-not $hk.Ok) { $tray.ShowBalloonTip(3000, 'Linuxify', (T 'Ctrl+Alt+L is already in use; use the icon.'), 'Warning') }
@@ -193,6 +279,13 @@ $tmZ.add_Tick({ try {
 function Start-LxDesktop { $dc = Join-Path $Data 'desktop.json'; if ((Test-Path $dc) -and ((Get-Content $dc -Raw | ConvertFrom-Json).Enabled)) { Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Data\LinuxifyDesktop.ps1`"" } }
 try { Start-LxDesktop } catch {}
 [System.Windows.Forms.Application]::Run()
-$hk.Dispose(); $tray.Dispose(); $mutex.ReleaseMutex()
+} catch {
+    Write-LxStartup ("startup failed: {0}" -f $_.Exception.ToString())
+} finally {
+    if ($hk) { try { $hk.Dispose() } catch {} }
+    if ($tray) { try { $tray.Visible = $false; $tray.Dispose() } catch {} }
+    try { $mutex.ReleaseMutex() } catch {}
+    try { $mutex.Dispose() } catch {}
+}
 
 
