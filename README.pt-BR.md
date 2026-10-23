@@ -51,7 +51,7 @@ Tudo o que o Linuxify altera ganha backup antes, e o *modo Linux* pode ser desli
 2. Clique duas vezes em **`Install.cmd`**.
 3. Responda **s** para instalar/atualizar as dependências com o winget (GlazeWM, Zebar, Windhawk, fastfetch, Starship e a Nerd Font opcional).
 
-O instalador copia o Linuxify para `%LOCALAPPDATA%\Linuxify`, faz backup das suas configs, grava as configs do Linuxify, coloca a bandeja na inicialização (`HKCU\...\Run`) e a inicia.
+O instalador copia o Linuxify para `%LOCALAPPDATA%\Linuxify`, faz backup das suas configs, grava as configs do Linuxify, coloca a bandeja na inicialização (`HKCU\...\Run`, com `-Boot` para esperar a barra de tarefas) e a inicia.
 
 Opções de linha de comando: `install.ps1 -Yes` (sem perguntas), `-NoDeps` (pula o winget), `-NoStart` (não inicia a bandeja).
 
@@ -95,9 +95,17 @@ Clique duas vezes em **`Uninstall.cmd`** (ou bandeja > *Desinstalar tudo...*). E
 ## Problemas comuns
 
 - **Ctrl+Alt+L não faz nada** — outro app usa o atalho; use o ícone da bandeja.
+- **Sem ícone na bandeja depois de entrar** — a inicialização espera o Explorer e a área de notificação por cerca de um minuto e tenta o ícone de novo. Os detalhes ficam em `%LOCALAPPDATA%\Linuxify\startup.log`. Se uma instalação antiga ainda usar o comando anterior, desligue e ligue *Iniciar com o Windows* uma vez (a próxima abertura também reescreve o comando). Reiniciar o Explorer traz o ícone de volta.
 - **Um jogo ou app está sendo organizado em tiles** — adicione em *Exceções* ou coloque o processo na regra de jogos.
 - **Ícones viram quadrados no terminal** — instale uma Nerd Font e selecione na aba *Terminal*.
 - **Sem efeito de vidro** — precisa do Windows 11 (ou Windows 10 1803+ para o desfoque) e dos efeitos de transparência ligados nas configurações do Windows; também dá para desligar em *Geral*.
+
+## Changelog
+
+### v0.2.3
+- Na entrada do Windows a bandeja espera o Explorer e a área de notificação (`-Boot` no comando de inicialização) antes de mostrar o ícone. Se a criação do ícone falhar, tenta de novo e grava o erro, com data e hora, em `%LOCALAPPDATA%\Linuxify\startup.log`.
+- Se o Explorer reiniciar, o ícone da bandeja volta.
+- *Iniciar com o Windows* (instalador, painel e menu da bandeja) grava o comando novo. Uma instalação antiga é atualizada na próxima vez que a bandeja abrir.
 
 ## Créditos
 
