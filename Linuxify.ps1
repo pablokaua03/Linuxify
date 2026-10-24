@@ -12,6 +12,9 @@ $Data  = Join-Path $env:LOCALAPPDATA 'Linuxify'
 $State = Join-Path $Data 'state.txt'
 $Run   = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 $WtSet = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json'
+# Shared helpers (UTF-8 file access, Windows Terminal merge). Installed next to this script.
+$__lt = Join-Path $Data 'LinuxifyTerminal.ps1'; if (-not (Test-Path $__lt) -and $PSScriptRoot) { $__lt = Join-Path $PSScriptRoot 'LinuxifyTerminal.ps1' }
+if (Test-Path $__lt) { . $__lt }
 $Apps  = @(
     @{ Key = 'Linuxify.GlazeWM';      Proc = 'glazewm';      Exe = "$env:ProgramFiles\glzr.io\GlazeWM\glazewm.exe" }
 )
@@ -44,6 +47,19 @@ function Start-Zebar {
     if (-not (Get-Process zebar -ErrorAction SilentlyContinue)) { Start-Process $z }
 }
 
+function Set-LxTerminalLinux {
+    # OFF -> ON: today's Windows Terminal settings become the "original" and the Linux look is added on
+    # top of them, so changes made since the last time are kept. Nothing is touched if the settings
+    # cannot be parsed (for example when they contain comments).
+    $lx = Join-Path $Data 'wt.settings.linux.json'
+    if (-not (Test-Path $WtSet)) { return }
+    if ((Test-Path $lx) -and ((Get-FileHash $WtSet).Hash -eq (Get-FileHash $lx).Hash)) { return }  # already the Linux variant
+    try {
+        Build-LxTerminalVariant -From $WtSet -To $lx -OverlayDir (Join-Path $Data 'configs\terminal')
+        Copy-Item $WtSet (Join-Path $Data 'wt.settings.original.json') -Force
+        Copy-Item $lx $WtSet -Force
+    } catch { Write-LxStartup "Windows Terminal theme not applied: $_" }
+}
 function Enable-Linux {
     foreach ($a in $Apps) {
         $exe = Find-Exe $a
@@ -53,19 +69,20 @@ function Enable-Linux {
     }
     Start-Zebar
     Set-Windhawk $true
-    $lx = Join-Path $Data 'wt.settings.linux.json'
-    if ((Test-Path $lx) -and (Test-Path $WtSet)) { Copy-Item $lx $WtSet -Force }
+    if (-not (Get-LinuxState)) { Set-LxTerminalLinux }
     Set-Content $State 'on'
 }
 function Disable-Linux {
     foreach ($a in $Apps) { Remove-ItemProperty $Run $a.Key -ErrorAction SilentlyContinue }
     Remove-ItemProperty $Run 'Linuxify.Zebar' -ErrorAction SilentlyContinue
-    if (Get-Command glazewm -ErrorAction SilentlyContinue) { & glazewm command wm-exit 2>$null }
+    $gz = Find-Exe $Apps[0]   # same lookup as Enable-Linux (Program Files), not only PATH
+    if ($gz) { & $gz command wm-exit 2>$null }
     foreach ($p in 'glazewm', 'glazewm-watcher', 'zebar') { Get-Process $p -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue }
     # Windhawk fica sempre ligado
     $orig = Join-Path $Data 'wt.settings.original.json'
     if ((Test-Path $orig) -and (Test-Path $WtSet)) {
         if (-not (Test-Path (Join-Path $Data 'wt.settings.linux.json'))) { Copy-Item $WtSet (Join-Path $Data 'wt.settings.linux.json') }
+        Backup-LxTerminalEdits -WtSettings $WtSet -LinuxVariant (Join-Path $Data 'wt.settings.linux.json') -BackupDir (Join-Path $Data 'backup') | Out-Null
         Copy-Item $orig $WtSet -Force
     }
     # (Windhawk sempre ligado, sem restart do explorer)

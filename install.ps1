@@ -18,6 +18,7 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 . (Join-Path $Src 'LinuxifyLang.ps1')
+. (Join-Path $Src 'LinuxifyTerminal.ps1')
 function Say([string]$m, [string]$c = 'Cyan') { Write-Host "==> $m" -ForegroundColor $c }
 function Ask([string]$q) { if ($Yes) { return $true }; (Read-Host "$q $(T '(y/N)')") -match '^[yYsS\u0434\u0414]' }
 function Backup-Path([string]$Path) {
@@ -46,7 +47,7 @@ Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='Linuxify.e
 
 # 2. copy the kit
 Say ((T 'Copying files to {0}') -f $Data)
-foreach ($f in 'Linuxify.ps1', 'LinuxifyPanel.ps1', 'LinuxifyAlpha.ps1', 'LinuxifyDesktop.ps1', 'LinuxifyLang.ps1', 'uninstall.ps1', 'Linuxify.exe') {
+foreach ($f in 'Linuxify.ps1', 'LinuxifyPanel.ps1', 'LinuxifyAlpha.ps1', 'LinuxifyDesktop.ps1', 'LinuxifyLang.ps1', 'LinuxifyTerminal.ps1', 'uninstall.ps1', 'Linuxify.exe') {
     $p = Join-Path $Src $f; if (Test-Path $p) { Copy-Item $p $Data -Force }
 }
 foreach ($d in 'configs', 'lang', 'assets') { Copy-Item (Join-Path $Src $d) $Data -Recurse -Force }
@@ -108,16 +109,9 @@ if (Test-Path $wt) {
         $orig = Join-Path $Data 'wt.settings.original.json'
         if (-not (Test-Path $orig)) { Copy-Item $wt $orig }
         Backup-Path $wt
-        $o = Get-Content $orig -Raw | ConvertFrom-Json
-        $scheme = Get-Content (Join-Path $C 'terminal\catppuccin-mocha.json') -Raw | ConvertFrom-Json
-        $glob   = Get-Content (Join-Path $C 'terminal\global.json') -Raw | ConvertFrom-Json
-        $defs   = Get-Content (Join-Path $C 'terminal\profile-defaults.json') -Raw | ConvertFrom-Json
-        if (-not $o.PSObject.Properties['schemes']) { $o | Add-Member -NotePropertyName schemes -NotePropertyValue @() }
-        $o.schemes = @(@($o.schemes | Where-Object { $_.name -ne $scheme.name }) + $scheme)
-        foreach ($p in $glob.PSObject.Properties) { $o | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value -Force }
-        if (-not $o.profiles.PSObject.Properties['defaults']) { $o.profiles | Add-Member -NotePropertyName defaults -NotePropertyValue ([pscustomobject]@{}) }
-        foreach ($p in $defs.PSObject.Properties) { $o.profiles.defaults | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value -Force }
-        [IO.File]::WriteAllText((Join-Path $Data 'wt.settings.linux.json'), ($o | ConvertTo-Json -Depth 32), $Utf8)
+        # The Linux variant is rebuilt from the current settings every time Linux mode is turned on
+        # (Linuxify.ps1), so this one only has to exist for the panel.
+        Build-LxTerminalVariant -From $orig -To (Join-Path $Data 'wt.settings.linux.json') -OverlayDir (Join-Path $C 'terminal')
     } catch { Say ((T 'Windows Terminal theme skipped: {0}') -f $_) 'Yellow' }
 } else { Say (T 'Windows Terminal settings not found; theme skipped.') 'Yellow' }
 
