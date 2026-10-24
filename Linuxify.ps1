@@ -71,54 +71,112 @@ function Disable-Linux {
     # (Windhawk sempre ligado, sem restart do explorer)
     Set-Content $State 'off'
 }
+function Test-LxExeSupportsBoot([string]$Path) {
+    # ps2exe stores the script as text inside Linuxify.exe. A build from before [switch]$Boot
+    # stops at once with: A parameter cannot be found that matches parameter name 'Boot'.
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return $false }
+    $fs = $null
+    try {
+        $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $len = [int64]$fs.Length
+        if ($len -le 0 -or $len -gt 20MB) { return $false }
+        $buf = [byte[]]::new([int]$len)
+        $off = 0
+        while ($off -lt $buf.Length) {
+            $n = $fs.Read($buf, $off, $buf.Length - $off)
+            if ($n -le 0) { break }
+            $off += $n
+        }
+        $needle = '[switch]$Boot'
+        if ([System.Text.Encoding]::ASCII.GetString($buf).Contains($needle)) { return $true }
+        return [System.Text.Encoding]::Unicode.GetString($buf).Contains($needle)
+    } catch { return $false } finally { if ($fs) { $fs.Dispose() } }
+}
+function Get-TrayPs1Command {
+    "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -STA -File `"$Data\Linuxify.ps1`" -Boot"
+}
 function Get-TrayLaunchCommand {
     $exe = Join-Path $Data 'Linuxify.exe'
-    # -Boot waits for Explorer and Shell_TrayWnd before the icon is created.
-    if (Test-Path $exe) { return "`"$exe`" -Boot" }
-    return "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -STA -File `"$Data\Linuxify.ps1`" -Boot"
+    # -Boot waits for Explorer and Shell_TrayWnd. Only an exe that declares the switch can take it.
+    if ((Test-Path -LiteralPath $exe) -and (Test-LxExeSupportsBoot $exe)) { return "`"$exe`" -Boot" }
+    return (Get-TrayPs1Command)
+}
+function Test-LxStartupCommandNeedsUpdate([string]$Current) {
+    # Empty means Start with Windows is off; do not turn it back on.
+    if (-not $Current) { return $false }
+    return ([string]$Current -ne [string](Get-TrayLaunchCommand))
 }
 function Set-TrayAutostart([bool]$On) {
     if ($On) { Set-ItemProperty $Run 'Linuxify' (Get-TrayLaunchCommand) }
     else { Remove-ItemProperty $Run 'Linuxify' -ErrorAction SilentlyContinue }
 }
 function Update-TrayBootArg {
-    # Existing installs keep the old Run command until the tray (or the toggle) runs again.
+    # Rewrite a startup command that is missing -Boot, or that passes -Boot to an exe which rejects it.
     $cur = (Get-ItemProperty $Run -Name 'Linuxify' -ErrorAction SilentlyContinue).Linuxify
-    if (-not $cur) { return }
-    if ([string]$cur -match '(^|\s)-Boot(\s|$)') { return }
+    if (-not (Test-LxStartupCommandNeedsUpdate $cur)) { return }
     Set-TrayAutostart $true
 }
 function Write-LxStartup([string]$Message) {
     try { Add-Content (Join-Path $Data 'startup.log') ("{0} {1}" -f (Get-Date).ToString('s'), $Message) -ErrorAction Stop } catch {}
 }
+function Format-LxStartupError([string]$Step, [string]$Reason) {
+    $log = Join-Path $Data 'startup.log'
+    $why = if ($Reason) { $Reason.Trim() } else { 'No details were returned.' }
+    if ($why -notmatch '[.!?]$') { $why += '.' }
+    "Linuxify could not finish starting. Step: $Step. $why What to do: sign in to Windows, then start Linuxify again. If this happens every time you sign in, turn Start with Windows off and on once so the startup command is rewritten. Log: $log"
+}
+function Format-LxBootNotice([string]$Step, [string]$Detail) {
+    "Step: $Step. $Detail"
+}
+function Show-LxStartupError([string]$Step, [string]$Reason) {
+    $msg = Format-LxStartupError -Step $Step -Reason $Reason
+    Write-LxStartup $msg
+    try {
+        if (-not ('System.Windows.Forms.MessageBox' -as [type])) { Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop }
+        [void][System.Windows.Forms.MessageBox]::Show($msg, 'Linuxify', [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+    } catch {}
+    $msg
+}
 function Add-LxBootType {
     if ('LxBoot' -as [type]) { return }
-    Add-Type -TypeDefinition @'
+    # user32.dll exports FindWindowW, not FindWindow. Bind that entry point so the taskbar
+    # probe does not depend on charset suffix decoration.
+    Add-Type -ErrorAction Stop -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 public static class LxBoot {
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    public static extern IntPtr FindWindow(string lpClassName, IntPtr lpWindowName);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "FindWindowW", SetLastError = true)]
+    public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
 }
 '@
 }
 function Test-ExplorerTrayReady {
     if (-not (Get-Process -Name explorer -ErrorAction SilentlyContinue)) { return $false }
-    Add-LxBootType
-    $hwnd = [LxBoot]::FindWindow('Shell_TrayWnd', [IntPtr]::Zero)
-    return ($hwnd -ne [IntPtr]::Zero)
+    try {
+        Add-LxBootType
+        $hwnd = [LxBoot]::FindWindow('Shell_TrayWnd', [NullString]::Value)
+        return ($hwnd -ne [IntPtr]::Zero)
+    } catch {
+        $script:LxBootProbeError = $_.Exception.Message
+        return $false
+    }
 }
 function Wait-ExplorerTray {
     # Poll until explorer.exe is up and the taskbar window exists, then a short extra delay
-    # so the notification area can finish creating. Give up after ~60s and try anyway.
+    # so the notification area can finish creating. Give up after ~60s, or immediately if the
+    # probe itself fails, and try to show the icon anyway.
+    $script:LxBootProbeError = $null
     $ready = $false
     $sw = [Diagnostics.Stopwatch]::StartNew()
     while ($sw.Elapsed.TotalSeconds -lt 60) {
         if (Test-ExplorerTrayReady) { $ready = $true; break }
+        if ($script:LxBootProbeError) { break }
         Start-Sleep -Milliseconds 500
     }
-    if (-not $ready) { Write-LxStartup 'boot wait timed out before explorer.exe and Shell_TrayWnd were both ready' }
-    Start-Sleep -Seconds 2
+    if (-not $ready) {
+        $why = if ($script:LxBootProbeError) { "The taskbar probe failed: $($script:LxBootProbeError)" } else { 'explorer.exe and the Shell_TrayWnd window were not both ready within 60 seconds.' }
+        Write-LxStartup (Format-LxBootNotice -Step 'wait for Explorer and the taskbar' -Detail "$why Linuxify will still try to show the tray icon.")
+    } else { Start-Sleep -Seconds 2 }
 }
 
 New-Item -ItemType Directory -Force $Data | Out-Null
@@ -135,13 +193,18 @@ $mutex = New-Object System.Threading.Mutex($false, 'Local\LinuxifyTray')
 if (-not $mutex.WaitOne(0)) { $mutex.Dispose(); return }
 $tray = $null
 $hk = $null
+$script:LxStartStep = 'start the tray'
 try {
-    try { Update-TrayBootArg } catch { Write-LxStartup ("could not refresh startup command: {0}" -f $_.Exception.Message) }
+    $script:LxStartStep = 'refresh the startup command'
+    try { Update-TrayBootArg } catch { Write-LxStartup (Format-LxStartupError -Step $script:LxStartStep -Reason $_.Exception.Message) }
     # -Boot is what the Run entry passes. Also wait when the shell is not up yet, so an
     # older startup command (no -Boot) still survives the logon that migrates it.
+    $script:LxStartStep = 'wait for Explorer and the taskbar'
     if ($Boot -or -not (Test-ExplorerTrayReady)) { Wait-ExplorerTray }
-    Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-    Add-Type -ReferencedAssemblies System.Windows.Forms -TypeDefinition @'
+    $script:LxStartStep = 'load Windows Forms'
+    Add-Type -AssemblyName System.Windows.Forms, System.Drawing -ErrorAction Stop
+    $script:LxStartStep = 'register the hotkey window'
+    Add-Type -ErrorAction Stop -ReferencedAssemblies System.Windows.Forms -TypeDefinition @'
 using System; using System.Runtime.InteropServices; using System.Windows.Forms;
 public class HotkeyWindow : NativeWindow, IDisposable {
   [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr h, int id, uint mod, uint vk);
@@ -165,6 +228,7 @@ public class HotkeyWindow : NativeWindow, IDisposable {
 }
 '@
 
+$script:LxStartStep = 'load helpers and language'
 . (Join-Path $Data 'LinuxifyAlpha.ps1')
 $__lf = Join-Path $Data 'LinuxifyLang.ps1'; if (-not (Test-Path $__lf)) { if ($PSScriptRoot) { $__lf = Join-Path $PSScriptRoot 'LinuxifyLang.ps1' } }; if (Test-Path $__lf) { . $__lf } else { function T([string]$k) { $k } }
 function New-StateIcon([bool]$On) {
@@ -188,6 +252,7 @@ function New-StateIcon([bool]$On) {
 }
 
 # NotifyIcon (and Visible) fails while the notification area is still coming up. Try a few times.
+$script:LxStartStep = 'create the tray icon'
 for ($notifyTry = 1; $notifyTry -le 3; $notifyTry++) {
     try {
         $tray = New-Object System.Windows.Forms.NotifyIcon
@@ -278,9 +343,11 @@ $tmZ.add_Tick({ try {
 # Reaplica estado salvo no boot (autostart dos apps ja cuida; isto garante coerencia)
 function Start-LxDesktop { $dc = Join-Path $Data 'desktop.json'; if ((Test-Path $dc) -and ((Get-Content $dc -Raw | ConvertFrom-Json).Enabled)) { Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Data\LinuxifyDesktop.ps1`"" } }
 try { Start-LxDesktop } catch {}
+$script:LxStartStep = 'run the tray message loop'
 [System.Windows.Forms.Application]::Run()
 } catch {
-    Write-LxStartup ("startup failed: {0}" -f $_.Exception.ToString())
+    if (-not $script:LxStartStep) { $script:LxStartStep = 'start the tray' }
+    Show-LxStartupError -Step $script:LxStartStep -Reason $_.Exception.Message
 } finally {
     if ($hk) { try { $hk.Dispose() } catch {} }
     if ($tray) { try { $tray.Visible = $false; $tray.Dispose() } catch {} }
