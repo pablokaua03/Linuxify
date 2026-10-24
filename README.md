@@ -102,6 +102,11 @@ Double-click **`Uninstall.cmd`** (or tray > *Uninstall everything...*). It turns
 
 ## Changelog
 
+### v0.2.4
+- Fixed the sign-in error `A parameter cannot be found that matches parameter name 'Boot'`. Startup passes `-Boot` to `Linuxify.exe` only when that exe supports it; otherwise it runs `Linuxify.ps1 -Boot` hidden. An older startup command is rewritten the next time the tray starts.
+- The taskbar check uses `FindWindowW` and no longer blocks the tray icon if it fails.
+- If startup fails, the message and `%LOCALAPPDATA%\Linuxify\startup.log` name the step that failed.
+
 ### v0.2.3
 - At sign-in the tray waits until Explorer and the notification area are ready (`-Boot` on the startup command) before showing the icon. If creating the icon fails, it tries again and writes the error, with a timestamp, to `%LOCALAPPDATA%\Linuxify\startup.log`.
 - If Explorer restarts, the tray icon is shown again.

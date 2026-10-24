@@ -102,6 +102,11 @@ Haz doble clic en **`Uninstall.cmd`** (o bandeja > *Desinstalar todo...*). Desac
 
 ## Changelog
 
+### v0.2.4
+- Corregido el error al iniciar sesión `A parameter cannot be found that matches parameter name 'Boot'`. El inicio solo pasa `-Boot` a `Linuxify.exe` cuando ese exe lo admite; si no, ejecuta `Linuxify.ps1 -Boot` oculto. Un comando de inicio antiguo se reescribe la próxima vez que arranque la bandeja.
+- La comprobación de la barra de tareas usa `FindWindowW` y ya no bloquea el icono de la bandeja si falla.
+- Si el inicio falla, el mensaje y `%LOCALAPPDATA%\Linuxify\startup.log` indican en qué paso falló.
+
 ### v0.2.3
 - Al iniciar sesión, la bandeja espera a Explorer y al área de notificación (`-Boot` en el comando de inicio) antes de mostrar el icono. Si no puede crear el icono, lo reintenta y escribe el error, con fecha y hora, en `%LOCALAPPDATA%\Linuxify\startup.log`.
 - Si Explorer se reinicia, el icono de la bandeja vuelve.
