@@ -73,6 +73,13 @@ Describe 'Linux mode on and off' {
         function global:Get-Process { $null }
         Import-LxFunction -Script (Join-Path $root 'Linuxify.ps1') -Name 'Get-LinuxState', 'Find-Exe', 'Set-Windhawk', 'Start-Zebar', 'Set-LxTerminalLinux', 'Enable-Linux', 'Disable-Linux', 'Write-LxStartup'
     }
+    AfterAll {
+        foreach ($n in 'Set-ItemProperty', 'Remove-ItemProperty', 'Start-Process', 'Stop-Process', 'Get-Service', 'Get-Process',
+                       'Get-LinuxState', 'Find-Exe', 'Set-Windhawk', 'Start-Zebar', 'Set-LxTerminalLinux', 'Enable-Linux', 'Disable-Linux', 'Write-LxStartup') {
+            Remove-Item "Function:\$n" -ErrorAction SilentlyContinue
+        }
+        foreach ($v in 'Data', 'State', 'WtSet', 'Run', 'Apps') { Remove-Variable -Name $v -Scope Global -ErrorAction SilentlyContinue }
+    }
     BeforeEach {
         $script:sb = New-LxSandbox
         $script:prevPF = $env:ProgramFiles; $script:prevLA = $env:LOCALAPPDATA

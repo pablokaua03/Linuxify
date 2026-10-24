@@ -12,25 +12,17 @@ param([switch]$Yes, [switch]$NoDeps, [switch]$NoStart)
 $ErrorActionPreference = 'Stop'
 $Src  = $PSScriptRoot
 $Data = Join-Path $env:LOCALAPPDATA 'Linuxify'
-$Manifest = Join-Path $Data 'backups.txt'
 $Stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$Utf8 = New-Object System.Text.UTF8Encoding($false)
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 . (Join-Path $Src 'LinuxifyLang.ps1')
 . (Join-Path $Src 'LinuxifyTerminal.ps1')
+. (Join-Path $Src 'LinuxifyBackup.ps1')
 function Say([string]$m, [string]$c = 'Cyan') { Write-Host "==> $m" -ForegroundColor $c }
 function Ask([string]$q) { if ($Yes) { return $true }; (Read-Host "$q $(T '(y/N)')") -match '^[yYsS\u0434\u0414]' }
-function Backup-Path([string]$Path) {
-    if (-not (Test-Path $Path)) { return }
-    $dir = Join-Path $Data ("backup\install-$Stamp")
-    New-Item -ItemType Directory -Force $dir | Out-Null
-    $dst = Join-Path $dir (($Path -replace '[:\\/]', '_').Trim('_'))
-    Copy-Item $Path $dst -Recurse -Force
-    Add-Content $Manifest "$Path|$dst"
-}
+function Backup-Path([string]$Path, [string]$Replacement) { Backup-LxPath -Path $Path -DataDir $Data -Stamp $Stamp -Replacement $Replacement }
 function Put([string]$From, [string]$To) {
-    Backup-Path $To
+    Backup-Path $To $From
     $parent = Split-Path $To -Parent
     if ($parent) { New-Item -ItemType Directory -Force $parent | Out-Null }
     if (Test-Path $To) { Remove-Item $To -Recurse -Force }
@@ -47,7 +39,7 @@ Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='Linuxify.e
 
 # 2. copy the kit
 Say ((T 'Copying files to {0}') -f $Data)
-foreach ($f in 'Linuxify.ps1', 'LinuxifyPanel.ps1', 'LinuxifyAlpha.ps1', 'LinuxifyDesktop.ps1', 'LinuxifyLang.ps1', 'LinuxifyTerminal.ps1', 'uninstall.ps1', 'Linuxify.exe') {
+foreach ($f in 'Linuxify.ps1', 'LinuxifyPanel.ps1', 'LinuxifyAlpha.ps1', 'LinuxifyDesktop.ps1', 'LinuxifyLang.ps1', 'LinuxifyTerminal.ps1', 'LinuxifyBackup.ps1', 'uninstall.ps1', 'Linuxify.exe') {
     $p = Join-Path $Src $f; if (Test-Path $p) { Copy-Item $p $Data -Force }
 }
 foreach ($d in 'configs', 'lang', 'assets') { Copy-Item (Join-Path $Src $d) $Data -Recurse -Force }
@@ -96,10 +88,9 @@ if (-not (Test-Path $logo)) { Copy-Item (Join-Path $C 'fastfetch\logo-default.tx
 
 # PowerShell profile hook (prompt + banner only when Linux mode is ON)
 $prof = $PROFILE.CurrentUserAllHosts
-if (-not ((Test-Path $prof) -and (Select-String $prof -Pattern 'Linuxify\\shell\\init' -Quiet))) {
+if (-not (Test-LxProfileHook $prof)) {
     Backup-Path $prof
-    New-Item -ItemType Directory -Force (Split-Path $prof -Parent) | Out-Null
-    Add-Content $prof "`r`n# linuxify`r`n`$__li = Join-Path `$env:LOCALAPPDATA 'Linuxify\shell\init.ps1'; if (Test-Path `$__li) { . `$__li }"
+    Add-LxProfileHook $prof   # keeps the file's own encoding; Add-Content would append ANSI to a UTF-8 file
 }
 
 # Windows Terminal: keep the original, build the Linux variant
