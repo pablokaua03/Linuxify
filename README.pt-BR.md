@@ -102,6 +102,11 @@ Clique duas vezes em **`Uninstall.cmd`** (ou bandeja > *Desinstalar tudo...*). E
 
 ## Changelog
 
+### v0.2.4
+- Corrigido o erro na entrada do Windows `A parameter cannot be found that matches parameter name 'Boot'`. A inicialização só passa `-Boot` ao `Linuxify.exe` quando esse exe aceita; senão executa `Linuxify.ps1 -Boot` oculto. Um comando de inicialização antigo é reescrito na próxima vez que a bandeja abrir.
+- A checagem da barra de tarefas usa `FindWindowW` e não bloqueia mais o ícone da bandeja se falhar.
+- Se a inicialização falhar, a mensagem e o `%LOCALAPPDATA%\Linuxify\startup.log` dizem em qual passo foi.
+
 ### v0.2.3
 - Na entrada do Windows a bandeja espera o Explorer e a área de notificação (`-Boot` no comando de inicialização) antes de mostrar o ícone. Se a criação do ícone falhar, tenta de novo e grava o erro, com data e hora, em `%LOCALAPPDATA%\Linuxify\startup.log`.
 - Se o Explorer reiniciar, o ícone da bandeja volta.
