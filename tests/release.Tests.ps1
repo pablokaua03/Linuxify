@@ -60,6 +60,7 @@ Describe 'New-Release.ps1' {
     }
 
     It 'rejects a bad version' {
+        $ErrorActionPreference = 'Continue'
         & $pwsh -NoProfile -File $script -Version 'v1' -OutDir (Join-Path $out 'x') 2>&1 | Out-Null
         $LASTEXITCODE | Should -Not -Be 0
     }
