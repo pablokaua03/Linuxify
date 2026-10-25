@@ -102,7 +102,7 @@ Double-click **`Uninstall.cmd`** (or tray > *Uninstall everything...*). It turns
 
 ## Changelog
 
-### Unreleased
+### v0.2.5
 - Windows Terminal: turning Linux mode on adds the Linux look to your *current* settings instead of copying an install-time file over them, so profiles and settings you changed after installing are kept. Anything changed while Linux mode is on is saved to `backup\wt-while-on-*.json` before turning it off. Settings that contain comments are left untouched.
 - Uninstall: restores only the first backup of each file, removes only Linuxify's own lines from your PowerShell profile (your own `starship init` line is no longer deleted) and no longer writes a script to `%TEMP%` to run as administrator. `-RemoveApps` removes exactly the packages the installer adds. `backups.txt` is removed at the end.
 - Profile and backup-list edits keep the file's encoding (Windows PowerShell 5.1 wrote ANSI).

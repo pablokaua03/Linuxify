@@ -102,7 +102,7 @@ Clique duas vezes em **`Uninstall.cmd`** (ou bandeja > *Desinstalar tudo...*). E
 
 ## Changelog
 
-### Não lançado
+### v0.2.5
 - Windows Terminal: ao ligar o modo Linux, o visual Linux é adicionado às suas configurações *atuais*, em vez de copiar por cima um arquivo da época da instalação; perfis e ajustes que você mudou depois de instalar ficam. O que for alterado com o modo Linux ligado é salvo em `backup\wt-while-on-*.json` antes de desligar. Configurações com comentários não são alteradas.
 - Desinstalar: restaura só o primeiro backup de cada arquivo, remove do seu perfil do PowerShell apenas as linhas do próprio Linuxify (a sua linha `starship init` não é mais apagada) e não grava mais um script em `%TEMP%` para rodar como administrador. `-RemoveApps` remove exatamente os pacotes que o instalador adiciona. O `backups.txt` é apagado no final.
 - Edições do perfil e da lista de backups mantêm a codificação do arquivo (o Windows PowerShell 5.1 gravava em ANSI).
