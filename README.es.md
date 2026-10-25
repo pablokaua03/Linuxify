@@ -24,7 +24,7 @@ Linuxify es una pequeña app de bandeja con un panel moderno que une varias herr
 - [Windhawk](https://windhawk.net) — mods de la barra de tareas
 - tema Catppuccin Mocha para Windows Terminal, prompt [Starship](https://starship.rs) y banner de [fastfetch](https://github.com/fastfetch-cli/fastfetch)
 
-Todo lo que Linuxify cambia se respalda antes, y el *modo Linux* se puede desactivar en cualquier momento para volver a tu Windows normal.
+Linuxify guarda una copia de los archivos de configuración que reemplaza, y el *modo Linux* se puede desactivar en cualquier momento para volver a tu Windows normal.
 
 ## Funciones
 
@@ -36,11 +36,11 @@ Todo lo que Linuxify cambia se respalda antes, y el *modo Linux* se puede desact
 - **Transparencia de ventanas** — haz translúcida cualquier ventana con un control en vivo y guárdalo como regla por app, que se vuelve a aplicar automáticamente.
 - **Widget de terminal en el escritorio** — tarjeta opcional de fastfetch fijada al escritorio, con esquina, tamaño (60–120%) y botón de cierre.
 - **4 idiomas** — Español, English, Português (BR) y Русский en el panel, menú de bandeja, instalador y desinstalador. Por defecto sigue el idioma de Windows.
-- **Seguro** — cada archivo se respalda antes de tocarlo; el desinstalador restaura los originales.
+- **Reversible** — los archivos de configuración que Linuxify reemplaza se copian antes a `backup\` y el desinstalador los devuelve. Windows Terminal se fusiona, no se sobrescribe: tus perfiles y ajustes se quedan, y lo que cambies con el modo Linux activado se guarda en `backup\` antes de desactivarlo. Linuxify también añade entradas de inicio y una línea en tu perfil de PowerShell; el desinstalador las quita.
 
 ## Requisitos
 
-- Windows 11 (Windows 10 1803+ funciona, con un desenfoque más simple)
+- Windows 11 (la única versión en la que Linuxify está probado; Windows 10 puede funcionar, pero no está probado)
 - Windows PowerShell 5.1 (incluido)
 - [winget](https://learn.microsoft.com/windows/package-manager/winget/) (Instalador de aplicación) para instalar las dependencias automáticamente
 - Recomendado: [JetBrainsMono Nerd Font](https://www.nerdfonts.com/) (el instalador puede instalarla)
@@ -51,7 +51,7 @@ Todo lo que Linuxify cambia se respalda antes, y el *modo Linux* se puede desact
 2. Haz doble clic en **`Install.cmd`**.
 3. Responde **s** para instalar/actualizar las dependencias con winget (GlazeWM, Zebar, Windhawk, fastfetch, Starship y la Nerd Font opcional).
 
-El instalador copia Linuxify a `%LOCALAPPDATA%\Linuxify`, respalda tus configuraciones, escribe las de Linuxify, añade la bandeja al inicio (`HKCU\...\Run`, con `-Boot` para esperar la barra de tareas) y la inicia.
+El instalador copia Linuxify a `%LOCALAPPDATA%\Linuxify`, guarda una copia de las configuraciones que reemplaza, escribe las de Linuxify, añade la bandeja al inicio (`HKCU\...\Run`, con `-Boot` para esperar la barra de tareas) y la inicia.
 
 Opciones: `install.ps1 -Yes` (sin preguntas), `-NoDeps` (sin winget), `-NoStart` (no inicia la bandeja).
 
@@ -82,7 +82,7 @@ El zip incluye `Linuxify.exe` (la bandeja compilada con ps2exe). Sin él, la ban
 | `%LOCALAPPDATA%\Linuxify\panel.json` | Preferencias del panel (idioma, cristal, color ASCII, banner) |
 | `%LOCALAPPDATA%\Linuxify\desktop.json` | Widget de escritorio (activo, esquina, tamaño) |
 | `%LOCALAPPDATA%\Linuxify\transparency.json` | Reglas de transparencia por app |
-| `%LOCALAPPDATA%\Linuxify\backup\` | Copias de seguridad de todo lo modificado |
+| `%LOCALAPPDATA%\Linuxify\backup\` | Copias de los archivos de configuración que Linuxify reemplazó |
 | `~/.glzr/glazewm/config.yaml` | Configuración de GlazeWM (mosaico, reglas, excepciones) |
 | `~/.config/fastfetch/logo.txt` | Banner ASCII actual (`logo-default.txt` es el predeterminado) |
 
@@ -90,7 +90,7 @@ Las traducciones están en `lang/*.json` (UTF-8). Nuevos idiomas son bienvenidos
 
 ## Desinstalar
 
-Haz doble clic en **`Uninstall.cmd`** (o bandeja > *Desinstalar todo...*). Desactiva el modo Linux, quita el inicio automático y restaura las configuraciones respaldadas. `uninstall.ps1 -RemoveApps` también desinstala los paquetes de winget. Las copias quedan en `%LOCALAPPDATA%\Linuxify\backup` hasta que las borres.
+Haz doble clic en **`Uninstall.cmd`** (o bandeja > *Desinstalar todo...*). Desactiva el modo Linux, quita el inicio automático y restaura las configuraciones respaldadas. `uninstall.ps1 -RemoveApps` también desinstala los paquetes de winget. De tu perfil de PowerShell solo quita las líneas que añadió Linuxify. Las copias quedan en `%LOCALAPPDATA%\Linuxify\backup` hasta que las borres.
 
 ## Solución de problemas
 
@@ -98,9 +98,15 @@ Haz doble clic en **`Uninstall.cmd`** (o bandeja > *Desinstalar todo...*). Desac
 - **No aparece el icono al iniciar sesión** — el inicio espera a Explorer y al área de notificación cerca de un minuto y reintenta el icono. El detalle está en `%LOCALAPPDATA%\Linuxify\startup.log`. Si una instalación antigua sigue usando el comando anterior, desactiva y activa *Iniciar con Windows* una vez (el próximo inicio también lo reescribe). Reiniciar Explorer devuelve el icono.
 - **Un juego o app se organiza en mosaico** — añádelo en *Excepciones* o pon el proceso en la regla de juegos.
 - **Los iconos salen como cuadrados en la terminal** — instala una Nerd Font y selecciónala en la pestaña *Terminal*.
-- **Sin efecto cristal** — requiere Windows 11 (o Windows 10 1803+ para el desenfoque) y los efectos de transparencia activados en Windows; también puedes desactivarlo en *General*.
+- **Sin efecto cristal** — requiere Windows 11 y los efectos de transparencia activados en Windows; también puedes desactivarlo en *General*.
 
 ## Changelog
+
+### Sin publicar
+- Windows Terminal: al activar el modo Linux, el aspecto Linux se añade a tu configuración *actual* en lugar de copiar encima un archivo de la época de la instalación; los perfiles y ajustes que cambiaste después de instalar se conservan. Lo que se cambie con el modo Linux activado se guarda en `backup\wt-while-on-*.json` antes de desactivarlo. La configuración con comentarios no se toca.
+- Desinstalar: restaura solo la primera copia de cada archivo, quita de tu perfil de PowerShell únicamente las líneas del propio Linuxify (tu línea `starship init` ya no se borra) y ya no escribe un script en `%TEMP%` para ejecutarlo como administrador. `-RemoveApps` quita exactamente los paquetes que añade el instalador. `backups.txt` se borra al final.
+- Las ediciones del perfil y de la lista de copias conservan la codificación del archivo (Windows PowerShell 5.1 escribía en ANSI).
+- `scripts\New-Release.ps1` genera el zip de la versión y `SHA256SUMS`. El CI ejecuta PSScriptAnalyzer y pruebas Pester.
 
 ### v0.2.4
 - Corregido el error al iniciar sesión `A parameter cannot be found that matches parameter name 'Boot'`. El inicio solo pasa `-Boot` a `Linuxify.exe` cuando ese exe lo admite; si no, ejecuta `Linuxify.ps1 -Boot` oculto. Un comando de inicio antiguo se reescribe la próxima vez que arranque la bandeja.

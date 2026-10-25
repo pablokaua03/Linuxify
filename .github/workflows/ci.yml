@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: PSScriptAnalyzer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Analyze
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          $r = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+          $r | Format-Table RuleName, Severity, ScriptName, Line, Message -AutoSize -Wrap | Out-String -Width 220 | Write-Host
+          foreach ($f in $r) { Write-Host "::$(if ($f.Severity -eq 'Error') { 'error' } else { 'warning' }) file=$($f.ScriptName),line=$($f.Line)::$($f.RuleName): $($f.Message)" }
+          $errors = @($r | Where-Object Severity -eq 'Error')
+          Write-Host "$($errors.Count) error(s), $(@($r).Count - $errors.Count) warning(s)"
+          if ($errors) { exit 1 }
+
+  test:
+    name: Pester (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows PowerShell 5.1 is what Linuxify runs on for users.
+          - { name: Windows PowerShell 5.1, os: windows-latest, shell: powershell }
+          - { name: PowerShell 7 (Windows), os: windows-latest, shell: pwsh }
+          - { name: PowerShell 7 (Linux),   os: ubuntu-latest,  shell: pwsh }
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Pester 5
+        run: |
+          Install-Module Pester -MinimumVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+      - name: Run tests
+        run: |
+          Import-Module Pester -MinimumVersion 5.5.0
+          $cfg = New-PesterConfiguration
+          $cfg.Run.Path = 'tests'
+          $cfg.Run.Exit = $true
+          $cfg.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $cfg
